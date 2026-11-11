@@ -25,7 +25,10 @@
     <h1>Lid worden van de Industriekring</h1>
     <p>Ondernemer in Ter Apel of omgeving? Meld je bedrijf aan. Het bestuur neemt daarna contact met je op over het lidmaatschap.</p>
     <form id="form" novalidate>
-      <div class="veld"><label for="bedrijfsnaam">Bedrijfsnaam *</label><input id="bedrijfsnaam" name="bedrijfsnaam" type="text" required maxlength="150" autocomplete="organization"></div>
+      <div class="twee">
+        <div class="veld"><label for="bedrijfsnaam">Bedrijfsnaam *</label><input id="bedrijfsnaam" name="bedrijfsnaam" type="text" required maxlength="150" autocomplete="organization"></div>
+        <div class="veld"><label for="branche">Type bedrijf *</label><select id="branche" name="branche" required><option value="">Kies…</option></select><span class="hint">Dezelfde indeling als op de website.</span></div>
+      </div>
       <div class="twee">
         <div class="veld"><label for="contactpersoon">Contactpersoon *</label><input id="contactpersoon" name="contactpersoon" type="text" required maxlength="120" autocomplete="name"></div>
         <div class="veld"><label for="functie">Functie</label><input id="functie" name="functie" type="text" maxlength="80" autocomplete="organization-title"></div>
@@ -41,9 +44,9 @@
       </div>
       <div class="twee">
         <div class="veld"><label for="kvk">KvK-nummer</label><input id="kvk" name="kvk" type="text" inputmode="numeric" maxlength="12"></div>
-        <div class="veld"><label for="branche">Branche</label><input id="branche" name="branche" type="text" maxlength="80"></div>
+        <div class="veld"><label for="website">Website</label><input id="website" name="website" type="url" maxlength="200" placeholder="https://" autocomplete="url"></div>
       </div>
-      <div class="veld"><label for="website">Website</label><input id="website" name="website" type="url" maxlength="200" placeholder="https://" autocomplete="url"></div>
+      <div class="veld"><label for="factuur_email">E-mailadres voor de factuur</label><input id="factuur_email" name="factuur_email" type="email" maxlength="200" autocomplete="off"><span class="hint">Gaat naar de penningmeester. Leeg laten als de factuur naar het adres hierboven mag.</span></div>
       <div class="veld"><label for="hoe_bekend">Hoe ken je de Industriekring?</label><input id="hoe_bekend" name="hoe_bekend" type="text" maxlength="200"></div>
       <div class="veld"><label for="opmerking">Opmerking</label><textarea id="opmerking" name="opmerking" maxlength="1000"></textarea></div>
       <div class="lokker" aria-hidden="true"><label for="fax">Laat dit veld leeg</label><input id="fax" name="fax" type="text" tabindex="-1" autocomplete="off"></div>
@@ -65,6 +68,12 @@
   const form = document.getElementById("form");
   const status = document.getElementById("status");
   const knop = form.querySelector("button");
+  const branche = document.getElementById("branche");
+  window.ik.functie("lid-worden").then((d) => {
+    branche.append(...d.branches.map((b) => window.ik.el("option", { value: b, text: b })));
+  }).catch(() => {
+    status.append(window.ik.el("div", { class: "melding fout", role: "alert", text: "De typen bedrijf konden niet worden geladen. Ververs de pagina, of mail ons." }));
+  });
   function hoogte() { if (ingebed && parent !== window) parent.postMessage({ industriekring: "hoogte", hoogte: document.documentElement.scrollHeight }, "*"); }
   new ResizeObserver(hoogte).observe(document.body);
 
@@ -72,15 +81,15 @@
     e.preventDefault();
     status.replaceChildren();
     const v = (id) => document.getElementById(id).value.trim();
-    if (!v("bedrijfsnaam") || !v("contactpersoon") || !v("email")) {
-      status.append(window.ik.el("div", { class: "melding fout", role: "alert", text: "Vul in elk geval de bedrijfsnaam, contactpersoon en het e-mailadres in." }));
+    if (!v("bedrijfsnaam") || !v("contactpersoon") || !v("email") || !v("branche")) {
+      status.append(window.ik.el("div", { class: "melding fout", role: "alert", text: "Vul in elk geval de bedrijfsnaam, het type bedrijf, de contactpersoon en het e-mailadres in." }));
       return;
     }
     knop.disabled = true; knop.textContent = "Bezig…";
     try {
       await window.ik.functie("lid-worden", { method: "POST", body: {
         bedrijfsnaam: v("bedrijfsnaam"), contactpersoon: v("contactpersoon"), functie: v("functie"), email: v("email"), telefoon: v("telefoon"),
-        adres: v("adres"), postcode: v("postcode"), plaats: v("plaats"), kvk: v("kvk"), branche: v("branche"), website: v("website"),
+        adres: v("adres"), postcode: v("postcode"), plaats: v("plaats"), kvk: v("kvk"), branche: v("branche"), website: v("website"), factuur_email: v("factuur_email"),
         hoe_bekend: v("hoe_bekend"), opmerking: v("opmerking"), fax: v("fax"), t0,
         toestemming_ledenoverzicht: document.getElementById("toestemming").checked,
       } });

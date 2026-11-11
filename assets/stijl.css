@@ -67,7 +67,32 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .melding.goed { background: #E8F4EE; border-color: #B8DCC8; color: #134D31; }
 .melding.fout { background: #FBEAEA; border-color: #F0C2BF; color: #7A1A14; }
 .melding.let { background: #FFF3E5; border-color: #F6D2A8; color: #6B3A00; }
-.verborgen { display: none !important; }
+.verborgen, [hidden] { display: none !important; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .voet { max-width: 760px; margin: 0 auto; padding: 0 16px 32px; font-size: 14px; color: var(--gedempt); }
+
+/* ---------------------------------------------------------------- ledenkaart (profielpagina en beheer) */
+.lidkaart { background: var(--grond); border: 1px solid var(--lijn); display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+.lidkaart .beeld { aspect-ratio: 3 / 2; position: relative; overflow: hidden; background-color: #F6F3EE; background-size: cover; background-position: center; background-repeat: no-repeat; display: grid; place-items: center; }
+.lidkaart .beeld::before, .lidkaart .beeld::after { content: ""; position: absolute; border-radius: 50%; border: 2px solid var(--merk); width: 44%; aspect-ratio: 1; right: -13%; top: -30%; }
+.lidkaart .beeld::after { border-color: var(--accent); width: 28%; right: -4%; top: -15%; }
+.lidkaart .beeld.foto::before, .lidkaart .beeld.foto::after, .lidkaart .beeld.foto .mono { display: none; }
+.lidkaart .beeld.foto.passend { background-color: var(--grond); background-size: contain; background-origin: content-box; padding: 16px 16px 46px; }
+.lidkaart .mono { font-family: var(--kop); font-weight: 700; font-size: 44px; color: var(--merk); letter-spacing: .02em; }
+.lidkaart .branche { position: absolute; left: 12px; bottom: 12px; background: var(--accent); color: #fff; font-family: var(--kop); font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; padding: 4px 10px; }
+.lidkaart.partner .branche { background: var(--merk); }
+.lidkaart .tekst { padding: 16px; display: grid; gap: 8px; align-content: start; }
+.lidkaart .tekst h3 { margin: 0; overflow-wrap: anywhere; }
+.lidkaart .tekst p { margin: 0; font-size: 15px; color: var(--inkt-zacht); overflow-wrap: anywhere; }
+.lidkaart .meer { font-weight: 600; font-size: 15px; color: var(--accent-tekst); }
+.knop.stil { background: transparent; color: var(--gedempt); border: 1px solid var(--lijn); }
+.knop.stil:hover { background: var(--lucht); color: var(--inkt); }
+.knop.tweede[aria-pressed="true"] { background: var(--merk); color: #fff; }
+.vink { display: flex; gap: 10px; align-items: flex-start; font-size: 16px; }
+.vink input { width: 20px; height: 20px; margin-top: 3px; flex: none; accent-color: var(--merk); }
+.veldfout { color: var(--fout); font-size: 14px; }
+.ongeldig { border-color: var(--fout) !important; }
+.rijknop { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--accent-tekst); text-decoration: underline; cursor: pointer; text-align: left; min-height: 44px; }
+.rijknop:hover { color: var(--merk); }
+.lokker { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }

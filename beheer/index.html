@@ -36,6 +36,17 @@
   dialog { border: 1px solid var(--lijn); padding: 0; max-width: 560px; width: calc(100% - 32px); }
   dialog::backdrop { background: rgba(11, 46, 102, .35); }
   dialog .kaart { border: 0; }
+  .twee-kol { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .twee-kol { grid-template-columns: minmax(0, 1fr); } }
+  .kaarten { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .tabel tr.gekozen td { background: var(--lucht); }
+  .gevolgen { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+  .wa { font-family: var(--tekst); font-size: 15px; white-space: pre-wrap; background: #E9F5E1; border: 1px solid #C5DDB6; border-radius: 8px; padding: 12px 14px; margin: 0; overflow-wrap: anywhere; user-select: all; }
+  .linkrij { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--lijn); }
+  .linkrij code { font-size: 13px; overflow-wrap: anywhere; }
+  @media (max-width: 560px) { .linkrij { grid-template-columns: minmax(0, 1fr) auto; } .linkrij code { grid-column: 1 / -1; grid-row: 2; } }
+  .qr svg { width: 180px; height: 180px; display: block; background: #fff; }
+  details > summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   @media print {
     .kop, .tabs, .balk, .geen-print, #statusbalk { display: none !important; }
     body { background: #fff; } main { padding: 0; } .kaart { border: 0; padding: 0; }
@@ -53,11 +64,13 @@
     <a href="#bijeenkomsten">Bijeenkomsten</a>
     <a href="#leden">Leden</a>
     <a href="#aanvragen">Aanmeldingen lid</a>
+    <a href="#profielen">Profielen</a>
     <a href="#instellingen">Instellingen</a>
   </nav>
   <div id="inhoud" aria-live="polite"><div class="kaart"><p>Even laden…</p></div></div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k" crossorigin="anonymous"></script>
 <script src="../assets/config.js"></script>
 <script src="../assets/gedeeld.js"></script>
 <script src="beheer.js"></script>

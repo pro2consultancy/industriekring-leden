@@ -28,16 +28,22 @@
 (() => {
   const { el, esc, datumLang, tijd, dag, maand, functie } = window.ik;
   const main = document.getElementById("inhoud");
-  const token = new URLSearchParams(location.search).get("t") || "";
+  const params = new URLSearchParams(location.search);
+  const token = params.get("t") || "";
+  const bijeenkomst = params.get("b") || "";
+  const via = ["whatsapp", "nieuwsbrief", "website", "qr"].includes(params.get("via")) ? params.get("via") : "website";
 
   function melding(soort, tekst) { return el("div", { class: `melding ${soort}`, role: soort === "fout" ? "alert" : "status" }, tekst); }
+
+  const SOORT = { ledenvergadering: "Ledenvergadering", bedrijfsbezoek: "Bedrijfsbezoek", sprekersavond: "Sprekersavond", kerstmarkt: "Kerstmarkt", bestuursvergadering: "Bestuursvergadering" };
+  const soortDatum = (b) => `${SOORT[b.soort] ?? "Bijeenkomst"} · ${new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Amsterdam" }).format(new Date(b.start))}`;
 
   function kopKaart(b, persoon) {
     const kaart = el("div", { class: "kaart" });
     kaart.append(...[
       el("div", { class: "datumrij" },
         el("div", { class: "datumblok", "aria-hidden": "true" }, el("span", { class: "d", text: dag(b.start) }), el("span", { class: "m", text: maand(b.start) })),
-        el("span", { class: "label", text: persoon?.naam ? `Uitnodiging voor ${persoon.naam}` : "Uitnodiging" })),
+        el("span", { class: "label", text: persoon?.naam ? `Uitnodiging voor ${persoon.naam}` : persoon ? "Uitnodiging" : soortDatum(b) })),
       el("h1", { text: b.titel }),
       b.omschrijving ? el("p", { text: b.omschrijving }) : null,
       el("div", { class: "info" },
@@ -121,6 +127,90 @@
     return kaart;
   }
 
+  // Algemene link: één link per bijeenkomst voor WhatsApp, nieuwsbrief, website en QR-code.
+  function algemeenFormulier(d) {
+    const b = d.bijeenkomst;
+    const t0 = Date.now();
+    const kaart = el("div", { class: "kaart" });
+    const uit = el("div", { "aria-live": "polite" });
+    const email = el("input", { type: "email", id: "a-mail", maxlength: "200", autocomplete: "email", required: true });
+    const naam = el("input", { type: "text", id: "a-naam", maxlength: "120", autocomplete: "name" });
+    const bedrijf = el("input", { type: "text", id: "a-bedrijf", maxlength: "150", autocomplete: "organization" });
+    const fax = el("input", { type: "text", id: "fax", tabindex: "-1", autocomplete: "off" });
+    const aantal = el("select", { id: "a-aantal" });
+    for (let i = 1; i <= b.max_personen; i++) aantal.append(el("option", { value: i, text: String(i) }));
+    const eten = b.vraag_eten ? el("fieldset", { style: "border:0;padding:0;margin:0" },
+      el("legend", { class: "groeplabel", text: "Eet je mee?" }),
+      el("div", { class: "keuze" },
+        el("input", { type: "radio", name: "eten", id: "eten_ja", value: "ja", checked: true }), el("label", { for: "eten_ja", text: "Ja, graag" }),
+        el("input", { type: "radio", name: "eten", id: "eten_nee", value: "nee" }), el("label", { for: "eten_nee", text: "Nee, dank je" }))) : null;
+    const knop = el("button", { type: "submit", class: "knop", text: "Ik kom" });
+    const niet = el("button", { type: "button", class: "rijknop", text: "Ik kan niet" });
+    const form = el("form", { novalidate: true },
+      el("div", { class: "veld" }, el("label", { for: "a-mail", text: "Je e-mailadres" }), email,
+        el("span", { class: "hint", text: d.open ? "Ben je lid, dan herkennen we je aan je e-mailadres." : "Het adres waarop je de post van de kring krijgt." })),
+      d.open ? el("div", { class: "twee" },
+        el("div", { class: "veld" }, el("label", { for: "a-naam", text: "Naam *" }), naam),
+        el("div", { class: "veld" }, el("label", { for: "a-bedrijf", text: "Bedrijf (optioneel)" }), bedrijf)) : null,
+      b.max_personen > 1 ? el("div", { class: "veld" }, el("label", { for: "a-aantal", text: "Met hoeveel personen kom je?" }), aantal) : null,
+      eten,
+      el("div", { class: "lokker", "aria-hidden": "true" }, el("label", { for: "fax", text: "Laat dit veld leeg" }), fax),
+      el("div", {}, knop), el("div", {}, niet), uit);
+    const datum = datumLang(b.start);
+    async function stuur(status) {
+      uit.replaceChildren();
+      email.classList.remove("ongeldig"); naam.classList.remove("ongeldig");
+      const adres = email.value.trim();
+      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(adres)) { email.classList.add("ongeldig"); email.focus(); return uit.append(melding("fout", "Vul een e-mailadres in, bijvoorbeeld naam@bedrijf.nl.")); }
+      if (d.open && !naam.value.trim()) { naam.classList.add("ongeldig"); naam.focus(); return uit.append(melding("fout", "Vul je naam in, dan weten we wie er komt.")); }
+      knop.disabled = niet.disabled = true;
+      const oud = knop.textContent; knop.textContent = "Bezig…";
+      try {
+        await functie("aanmelden", { method: "POST", body: {
+          b: bijeenkomst, via, email: adres, status, aantal: Number(aantal.value || 1), naam: naam.value, bedrijf: bedrijf.value,
+          eet_mee: b.vraag_eten ? form.querySelector("input[name=eten]:checked")?.value === "ja" : null, fax: fax.value, t0,
+        } });
+        const wat = status === "komt" ? "aangemeld" : "afgemeld";
+        uit.append(melding("goed", d.open
+          ? `Je bent ${wat} voor ${b.titel} op ${datum}. De bevestiging staat in je mail.`
+          : `Bedankt. Staat dit adres bij de kring bekend, dan ben je ${wat} voor ${b.titel} op ${datum} en krijg je een bevestiging per mail. Geen mail gekregen? Gebruik dan het adres waarop je de uitnodiging kreeg.`));
+      } catch (err) { uit.append(melding("fout", err.message)); }
+      finally { knop.disabled = niet.disabled = false; knop.textContent = oud; }
+    }
+    form.addEventListener("submit", (e) => { e.preventDefault(); stuur("komt"); });
+    niet.addEventListener("click", () => stuur("komt_niet"));
+    kaart.append(...[
+      el("h2", { text: "Meld je aan" }),
+      b.aanmelden_tot ? el("p", { class: "hint", text: `Aanmelden kan tot ${datumLang(b.aanmelden_tot)}.` }) : null,
+      form].filter(Boolean));
+    return kaart;
+  }
+
+  async function startAlgemeen() {
+    if (!/^[0-9a-f-]{36}$/i.test(bijeenkomst)) {
+      main.replaceChildren(el("div", { class: "kaart" }, el("h1", { text: "Deze link werkt niet" }), el("p", { text: "Vraag het bestuur om de juiste link." })));
+      return;
+    }
+    try {
+      const d = await functie("aanmelden", { query: `?b=${encodeURIComponent(bijeenkomst)}&via=${via}` });
+      const b = d.bijeenkomst;
+      document.title = `${b.titel} · Industriekring Ter Apel`;
+      const delen = [];
+      if (d.testmodus) delen.push(melding("let", "Testmodus: er gaan nog geen echte mails uit."));
+      delen.push(kopKaart(b, null));
+      if (d.gesloten) delen.push(el("div", { class: "kaart" }, melding("let", "Deze bijeenkomst is al geweest.")));
+      else if (b.aanmeldwijze === "extern" && b.externe_link) {
+        delen.push(el("div", { class: "kaart" }, el("h2", { text: "Kaarten" }), b.externe_tekst ? el("p", { text: b.externe_tekst }) : null,
+          el("a", { href: b.externe_link, class: "knop", rel: "noopener", text: "Kaarten bestellen" })));
+      } else if (b.aanmeldwijze === "geen") delen.push(el("div", { class: "kaart" }, el("p", { text: "Aanmelden is voor deze bijeenkomst niet nodig. Tot dan!" })));
+      else if (d.deadline_voorbij) delen.push(el("div", { class: "kaart" }, melding("let", "Aanmelden is gesloten. Wil je toch komen? Neem contact op met het bestuur.")));
+      else delen.push(algemeenFormulier(d));
+      main.replaceChildren(...delen);
+    } catch (err) {
+      main.replaceChildren(el("div", { class: "kaart" }, el("h1", { text: "Dat lukte niet" }), melding("fout", err.message)));
+    }
+  }
+
   async function start() {
     if (!/^[A-Za-z0-9_-]{20,40}$/.test(token)) {
       main.replaceChildren(el("div", { class: "kaart" }, el("h1", { text: "Deze link werkt niet" }), el("p", { text: "Gebruik de knop in je uitnodiging, of vraag het bestuur om een nieuwe link." })));
@@ -145,7 +235,7 @@
       main.replaceChildren(el("div", { class: "kaart" }, el("h1", { text: "Dat lukte niet" }), melding("fout", err.message)));
     }
   }
-  start();
+  if (bijeenkomst && !token) startAlgemeen(); else start();
 })();
 </script>
 </body>
