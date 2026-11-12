@@ -75,7 +75,9 @@
 
   function afsluitscherm(d, opSite) {
     const delen = [
-      melding("goed", opSite
+      melding("goed", opSite && d.profiel?.op_website
+        ? "Je wijziging is ingestuurd. Het bestuur kijkt hem na; tot die tijd blijft de vorige versie op de website staan."
+        : opSite
         ? `Je profiel is ingestuurd. Het bestuur kijkt het na; daarna staat ${d.bedrijf.naam} op de website.`
         : `Je profiel is opgeslagen. Je hebt aangegeven dat ${d.bedrijf.naam} niet op de website wil staan; het bestuur zet het er dus niet op.`),
       el("h2", { text: "Twee dingen om meteen te regelen" }),

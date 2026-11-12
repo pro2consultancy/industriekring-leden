@@ -432,7 +432,7 @@
         el("label", { style: "display:flex;gap:8px;align-items:center;margin-top:8px" }, r.primair, "Ontvangt de uitnodigingen"),
         el("label", { style: "display:flex;gap:8px;align-items:center" }, r.actief, "Actief (vinkje uit is tijdelijk)"),
         !r.c._nieuw && bestaand > 1 ? el("div", { style: "margin-top:8px" }, bevestigKnop("Verwijderen", "Zeker? Persoon en aanmeldingen gaan definitief weg", async () => {
-          try { await actie({ actie: "contactpersoon_verwijderen", contactpersoon_id: r.c.id }); dlg.close(); ledenScherm(); }
+          try { await actie({ actie: "contactpersoon_verwijderen", contactpersoon_id: r.c.id }); bewaar("leden", "goed", `${r.c.naam} is verwijderd bij ${b.naam}.`); dlg.close(); ledenScherm(); }
           catch (e) { uit.replaceChildren(melding("fout", e.message)); }
         }, "knop klein tweede")) : null)));
       tekenContacten();
@@ -509,7 +509,7 @@
       try { const r = await actie({ actie: "jaaroverzicht", jaar: new Date().getFullYear() }); downloadBase64(r.naam, r.bestand, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); }
       catch (e) { ledenUit.replaceChildren(melding("fout", e.message)); }
     }));
-    const ledenUit = el("div", { "aria-live": "polite" });
+    const ledenUit = el("div", { "aria-live": "polite" }, neem("leden"));
     inhoud.replaceChildren(kaart(
       el("div", { class: "balk" }, el("h1", { text: "Leden", style: "margin:0;flex:1" }),
         el("button", { type: "button", class: "knop tweede klein", text: "Lijst downloaden", onclick: () => download("ledenlijst-industriekring.csv", csv([["Bedrijf", "Status", "Adres", "Postcode", "Plaats", "Lid sinds", "Contactpersoon", "Functie", "E-mail", "06", "Ontvangt uitnodiging"],
@@ -527,7 +527,7 @@
     const { data } = await sb.from("lidmaatschapsaanvragen").select("*").order("aangemaakt_op", { ascending: false }).limit(100);
     const uit = el("div", { "aria-live": "polite" }, neem("aanvragen"));
     const kaartjes = (data ?? []).map((a) => {
-      const velden = [["Contactpersoon", `${a.contactpersoon}${a.functie ? ` (${a.functie})` : ""}`], ["E-mail", a.email], ["Telefoon", a.telefoon], ["Adres", [a.adres, a.postcode, a.plaats].filter(Boolean).join(", ")], ["KvK", a.kvk], ["Branche", a.branche], ["Website", a.website], ["Hoe bekend", a.hoe_bekend], ["Opmerking", a.opmerking], ["In ledenoverzicht", a.toestemming_ledenoverzicht ? "ja" : "nee"]].filter(([, v]) => v);
+      const velden = [["Contactpersoon", `${a.contactpersoon}${a.functie ? ` (${a.functie})` : ""}`], ["E-mail", a.email], ["Telefoon", a.telefoon], ["Adres", [a.adres, a.postcode, a.plaats].filter(Boolean).join(", ")], ["KvK", a.kvk], ["Branche", a.branche], ["Website", a.website], ["Factuur naar", a.factuur_email], ["Hoe bekend", a.hoe_bekend], ["Opmerking", a.opmerking], ["In ledenoverzicht", a.toestemming_ledenoverzicht ? "ja" : "nee"]].filter(([, v]) => v);
       const knoppen = a.status === "nieuw" ? el("div", { class: "balk" },
         bevestigKnop("Goedkeuren", "Zeker? Klik nogmaals", async () => { try { const r = await actie({ actie: "aanvraag_goedkeuren", aanvraag_id: a.id }); bewaar("aanvragen", "goed", `${a.bedrijfsnaam} is toegevoegd als lid. Welkomstmail: ${({ verzonden: "verstuurd", test: "alleen gelogd (testmodus)", fout: "mislukt" })[r.welkomstmail] ?? r.welkomstmail}.`); aanvragenScherm(); } catch (e) { uit.replaceChildren(melding("fout", e.message)); } }),
         bevestigKnop("Afwijzen", "Zeker? Klik nogmaals", async () => { try { await actie({ actie: "aanvraag_afwijzen", aanvraag_id: a.id }); aanvragenScherm(); } catch (e) { uit.replaceChildren(melding("fout", e.message)); } }, "knop tweede")) : null;
