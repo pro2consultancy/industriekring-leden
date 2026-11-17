@@ -690,6 +690,7 @@
       max_per_run: el("input", { type: "number", id: id(), min: 1, max: 300, value: m.max_per_run ?? 120 }),
       meldingen_penningmeester: tekstInvoer((m.meldingen_penningmeester ?? []).join(", ")),
       whatsapp_community_link: el("input", { type: "url", id: id(), value: m.whatsapp_community_link ?? "", placeholder: "https://chat.whatsapp.com/…" }),
+      contributie_jaarbedrag: el("input", { type: "number", id: id(), min: 0, step: "0.01", inputmode: "decimal", value: typeof m.contributie_jaarbedrag === "number" ? m.contributie_jaarbedrag : "" }),
       brevo_sync_aan: el("select", { id: id() }, [["false", "Uit"], ["true", "Aan: de lijsten Leden en Partners volgen de administratie"]].map(([v, t]) => el("option", { value: v, text: t, selected: String(m.brevo_sync_aan === true) === v }))),
     };
     const lijst = (s) => s.split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -704,6 +705,7 @@
         el("div", { class: "breed" }, veld("Afzenderregel onder elke mail", f.adres_footer)),
         el("div", { class: "breed" }, veld("Melding bij nieuwe lidaanvraag naar", f.meldingen_bestuur, "Ook de melding als een lid zijn profiel instuurt.")),
         el("div", { class: "breed" }, veld("Penningmeester (meldingen bij in- en uitschrijving)", f.meldingen_penningmeester, "Gescheiden door komma's. Leeg: de meldingen wachten tot hier een adres staat.")),
+        el("div", { class: "breed" }, veld("Contributie per jaar (euro)", f.contributie_jaarbedrag, "Staat in de melding \"Nieuw lid\" aan de penningmeester en in het jaaroverzicht, naar rato: de maand van ingang telt mee. Leeg: niets tonen. Alleen voor leden, niet voor partners.")),
         el("div", { class: "breed" }, veld("Link naar de WhatsApp-community", f.whatsapp_community_link, "Staat op het afsluitscherm van de profielpagina.")),
         el("div", { class: "breed" }, veld("Brevo-lijsten bijhouden", f.brevo_sync_aan, "Zet pas aan als de lijsten bij Brevo hieronder zijn ingericht en een proefvergelijking klopt."))),
       el("div", { class: "balk" }, knop), uit);
@@ -718,7 +720,11 @@
           max_per_run: Math.min(300, Math.max(1, Number(f.max_per_run.value) || 120)),
           meldingen_penningmeester: lijst(f.meldingen_penningmeester.value), whatsapp_community_link: f.whatsapp_community_link.value.trim(),
           brevo_sync_aan: f.brevo_sync_aan.value === "true",
+          contributie_jaarbedrag: f.contributie_jaarbedrag.value.trim() === "" ? null : Math.round(Number(f.contributie_jaarbedrag.value.replace(",", ".")) * 100) / 100,
         };
+        if (nieuw.contributie_jaarbedrag !== null && !(nieuw.contributie_jaarbedrag > 0 && nieuw.contributie_jaarbedrag < 100000)) {
+          return uit.replaceChildren(melding("fout", "Vul bij contributie een bedrag in euro's in, of laat het veld leeg."));
+        }
         const slecht = [...nieuw.test_ontvangers, ...nieuw.meldingen_bestuur, ...nieuw.meldingen_penningmeester].find((e) => !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(e));
         if (slecht) return uit.replaceChildren(melding("fout", `"${slecht}" is geen geldig e-mailadres.`));
         if (nieuw.whatsapp_community_link && !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(nieuw.whatsapp_community_link)) {
