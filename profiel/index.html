@@ -125,11 +125,11 @@
     const bestand = el("input", { id: "foto", type: "file", accept: "image/jpeg,image/png,image/webp" });
     const fotoHint = el("span", { class: "hint", id: "foto-hint" });
     const toestemming = el("input", { type: "checkbox", id: "toestemming", checked: !!p.foto_toestemming });
-    const toestemmingRij = el("label", { class: "vink", for: "toestemming" }, toestemming, el("span", { text: "Ik mag deze afbeelding gebruiken op de website van de kring." }));
+    const toestemmingRij = el("label", { class: "vink", for: "toestemming" }, toestemming, el("span", { text: "Ik mag dit logo (of deze foto) gebruiken op de website van de kring." }));
     const pasKnop = (waarde, tekst) => el("button", { type: "button", class: "knop tweede klein", "data-pas": waarde, text: tekst, onclick: () => { s.pas = waarde; teken(); } });
     const pasKeuze = el("div", { class: "fotokeuze" }, pasKnop("passend", "Hele afbeelding tonen"), pasKnop("vullend", "Vak vullen"),
-      el("button", { type: "button", class: "knop stil klein", text: "Afbeelding weghalen", onclick: () => { s.foto = null; s.fotoPad = null; bestand.value = ""; teken(); } }),
-      el("span", { class: "hint", text: "Een logo past het best in zijn geheel; een foto mag het vak vullen." }));
+      el("button", { type: "button", class: "knop stil klein", text: "Logo weghalen", onclick: () => { s.foto = null; s.fotoPad = null; bestand.value = ""; teken(); } }),
+      el("span", { class: "hint", text: "Een logo staat het best in zijn geheel; een foto mag het vak vullen." }));
     const opSite = el("input", { type: "checkbox", id: "opsite", checked: d.op_website_toegestaan !== false });
     const metNaam = el("input", { type: "checkbox", id: "metnaam", checked: !!p.toon_contactpersoon });
     const c = d.contact;
@@ -143,7 +143,7 @@
 
     function teken() {
       teller.textContent = `${kort.value.length} / 300`;
-      fotoHint.textContent = s.foto ? "" : "Nog geen afbeelding; de kaart toont je initialen.";
+      fotoHint.textContent = s.foto ? "" : "Nog geen logo; de kaart toont je initialen. Geen logo bij de hand? Een foto van je bedrijf kan ook.";
       pasKeuze.hidden = !s.foto; toestemmingRij.hidden = !s.foto;
       for (const b of pasKeuze.querySelectorAll("[data-pas]")) b.setAttribute("aria-pressed", String(b.dataset.pas === s.pas));
       voorbeeld.replaceChildren(lidkaart({ naam: d.bedrijf.naam, branche: branche.value || "Type bedrijf", kort: kort.value.trim(), foto: s.foto, pas: s.pas, partner: d.bedrijf.label === "Partner" }));
@@ -179,8 +179,8 @@
     });
 
     const form = el("form", { class: "kaart", novalidate: true },
-      el("div", { class: "veld" }, el("span", { class: "groeplabel", text: "Foto of logo" }),
-        el("div", { class: "fotokeuze" }, bestand, el("label", { for: "foto", class: "knop tweede klein", text: "Kies een afbeelding" }), fotoHint),
+      el("div", { class: "veld" }, el("span", { class: "groeplabel", text: "Logo" }),
+        el("div", { class: "fotokeuze" }, bestand, el("label", { for: "foto", class: "knop tweede klein", text: "Kies je logo" }), fotoHint),
         pasKeuze, toestemmingRij),
       veld("Type bedrijf", branche),
       veld("Korte tekst voor de kaart", kort, teller),
