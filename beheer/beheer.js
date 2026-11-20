@@ -603,6 +603,7 @@
         const contact = cs.find((c) => c.id === p.contactpersoon_id);
         delen.push(el("dl", { class: "rooster", style: "gap:4px 16px;margin:12px 0" },
           ...[["Meer over het bedrijf", ingevuld.lang || "—"], ["Website", ingevuld.website || "—"],
+            ["Medewerkers", ingevuld.medewerkers || "—"], ["Bestaat sinds", ingevuld.bestaat_sinds ? String(ingevuld.bestaat_sinds) : "—"], ["Werkgebied", ingevuld.werkgebied || "—"],
             ["Contactpersoon op de site", ingevuld.toon_contactpersoon ? contact?.naam || "ja" : "nee"],
             ["Foto of logo", ingevuld.foto_pad ? `${ingevuld.foto_weergave === "vullend" ? "vult het vak" : "hele afbeelding"}${ingevuld.foto_toestemming ? ", gebruik bevestigd" : ""}` : "geen"],
             ["Ingestuurd", p.ingediend_op ? new Date(p.ingediend_op).toLocaleString("nl-NL") : "—"],
