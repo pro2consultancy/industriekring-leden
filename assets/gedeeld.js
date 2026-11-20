@@ -25,14 +25,14 @@ window.ik = (() => {
     initialen(naam) {
       return String(naam ?? "").trim().split(/\s+/).filter((w) => /^[A-Za-zÀ-ÿ0-9]/.test(w)).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
     },
-    // De kaart zoals op de pagina Onze leden. d = { naam, branche, kort, foto (url), pas ('passend'|'vullend'), partner }
+    // De kaart zoals op de pagina Onze leden. d = { naam, branche, kort, foto (url), pas ('passend'|'vullend') }
     lidkaart(d) {
       const { el } = window.ik;
       const beeld = el("div", { class: `beeld${d.foto ? ` foto${d.pas === "vullend" ? "" : " passend"}` : ""}` },
         el("span", { class: "mono", "aria-hidden": "true", text: window.ik.initialen(d.naam) }),
-        d.partner || d.branche ? el("span", { class: "branche", text: d.partner ? "Partner" : d.branche }) : null);
+        d.branche ? el("span", { class: "branche", text: d.branche }) : null);
       if (d.foto) beeld.style.backgroundImage = `url(${JSON.stringify(String(d.foto))})`;
-      return el("article", { class: `lidkaart${d.partner ? " partner" : ""}` }, beeld,
+      return el("article", { class: "lidkaart" }, beeld,
         el("div", { class: "tekst" }, el("h3", { text: d.naam || "Bedrijfsnaam" }),
           el("p", { text: d.kort || "Hier komt je korte tekst." }), el("span", { class: "meer", text: "Lees verder" })));
     },

@@ -146,14 +146,14 @@
       fotoHint.textContent = s.foto ? "" : "Nog geen logo; de kaart toont je initialen. Geen logo bij de hand? Een foto van je bedrijf kan ook.";
       pasKeuze.hidden = !s.foto; toestemmingRij.hidden = !s.foto;
       for (const b of pasKeuze.querySelectorAll("[data-pas]")) b.setAttribute("aria-pressed", String(b.dataset.pas === s.pas));
-      voorbeeld.replaceChildren(lidkaart({ naam: d.bedrijf.naam, branche: branche.value || "Type bedrijf", kort: kort.value.trim(), foto: s.foto, pas: s.pas, partner: d.bedrijf.label === "Partner" }));
+      voorbeeld.replaceChildren(lidkaart({ naam: d.bedrijf.naam, branche: branche.value || "Type bedrijf", kort: kort.value.trim(), foto: s.foto, pas: s.pas }));
       // De bedrijfspagina: alleen ingevulde regels; zo staan ze straks ook op de site.
       const beeld = el("div", { class: `lp-beeld${s.foto && s.pas !== "vullend" ? " passend" : ""}` }, s.foto ? null : el("span", { class: "mono", "aria-hidden": "true", text: window.ik.initialen(d.bedrijf.naam) }));
       if (s.foto) beeld.style.backgroundImage = `url(${JSON.stringify(String(s.foto))})`;
       const jaar = /^\d{4}$/.test(sinds.value.trim()) ? sinds.value.trim() : "";
       const regels = [["Locatie", d.locatie], ["Medewerkers", medewerkers.value], ["Bestaat sinds", jaar], ["Werkgebied", werkgebied.value]].filter(([, w]) => w);
       pagina.replaceChildren(el("div", { class: "lidpagina" }, beeld,
-        el("div", { class: "lp-band" }, el("strong", { text: d.bedrijf.naam }), el("span", { text: d.bedrijf.label === "Partner" ? "Partner" : branche.value || "Type bedrijf" })),
+        el("div", { class: "lp-band" }, el("strong", { text: d.bedrijf.naam }), el("span", { text: branche.value || "Type bedrijf" })),
         el("h4", { text: "Over het bedrijf" }),
         el("p", { class: "lp-tekst", text: lang.value.trim() || kort.value.trim() || "Hier komt de tekst bij “Meer over je bedrijf”." }),
         el("div", { class: "lp-info" }, el("div", { class: "lp-kop", text: "Bedrijfsinformatie" }),

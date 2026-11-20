@@ -81,7 +81,6 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .lidkaart .beeld.foto.passend { background-color: var(--grond); background-size: contain; background-origin: content-box; padding: 16px 16px 46px; }
 .lidkaart .mono { font-family: var(--kop); font-weight: 700; font-size: 44px; color: var(--merk); letter-spacing: .02em; }
 .lidkaart .branche { position: absolute; left: 12px; bottom: 12px; background: var(--accent); color: #fff; font-family: var(--kop); font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; padding: 4px 10px; }
-.lidkaart.partner .branche { background: var(--merk); }
 .lidkaart .tekst { padding: 16px; display: grid; gap: 8px; align-content: start; }
 .lidkaart .tekst h3 { margin: 0; overflow-wrap: anywhere; }
 .lidkaart .tekst p { margin: 0; font-size: 15px; color: var(--inkt-zacht); overflow-wrap: anywhere; }

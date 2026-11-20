@@ -185,7 +185,7 @@
       aanmelden_tot: el("input", { type: "datetime-local", id: id(), value: naarLokaal(b.aanmelden_tot) }),
       max_personen: el("input", { type: "number", id: id(), min: 1, max: 10, value: b.max_personen }),
       vraag_eten: el("select", { id: id() }, [["false", "Nee"], ["true", "Ja, vraag of mensen mee-eten"]].map(([v, t]) => el("option", { value: v, text: t, selected: String(b.vraag_eten) === v }))),
-      doelgroep: el("select", { id: id() }, [["leden", "Leden"], ["leden_en_partners", "Leden en partners"], ["iedereen", "Iedereen (ook externen)"]].map(([v, t]) => el("option", { value: v, text: t, selected: b.doelgroep === v }))),
+      doelgroep: el("select", { id: id() }, [["leden", "Leden"], ["iedereen", "Iedereen (ook externen)"]].map(([v, t]) => el("option", { value: v, text: t, selected: b.doelgroep === v || (v === "leden" && b.doelgroep === "leden_en_partners") }))),
       status: el("select", { id: id() }, [["concept", "Concept (nog niet zichtbaar)"], ["gepubliceerd", "Gepubliceerd"], ["geannuleerd", "Geannuleerd"]].map(([v, t]) => el("option", { value: v, text: t, selected: b.status === v }))),
       afbeelding_url: el("input", { type: "url", id: id(), value: b.afbeelding_url ?? "", placeholder: "https://…" }),
     };
@@ -354,7 +354,7 @@
           el("button", { type: "button", class: "knop klein tweede", text: "Kopiëren", onclick: async () => { try { await kopieer(link); toon("goed", `Link voor ${label.toLowerCase()} gekopieerd.`); } catch { toon("fout", "Kopiëren lukte niet."); } } }));
       };
       algemeen = el("details", { class: "geen-print", style: "margin-top:16px" }, el("summary", { text: "Algemene aanmeldlink (WhatsApp, nieuwsbrief, website, flyer)" }),
-        el("p", { class: "hint", text: "Eén link voor iedereen. Een lid of partner meldt zich aan met zijn e-mailadres en krijgt de bevestiging met zijn persoonlijke link. Een onbekend adres krijgt niets" + (b.doelgroep === "iedereen" ? ", behalve bij deze open avond: dan wordt het als gast aangemeld." : "; het scherm zegt niet of een adres bekend is.") }),
+        el("p", { class: "hint", text: "Eén link voor iedereen. Een lid meldt zich aan met zijn e-mailadres en krijgt de bevestiging met zijn persoonlijke link. Een onbekend adres krijgt niets" + (b.doelgroep === "iedereen" ? ", behalve bij deze open avond: dan wordt het als gast aangemeld." : "; het scherm zegt niet of een adres bekend is.") }),
         b.status !== "gepubliceerd" ? melding("let", "De link werkt pas als de bijeenkomst gepubliceerd is.") : null,
         rij("WhatsApp", "whatsapp"), rij("Nieuwsbrief", "nieuwsbrief"), rij("Website", "website"), rij("QR-code", "qr"),
         el("div", { class: "balk", style: "align-items:flex-start" }, qrVak,
@@ -384,7 +384,7 @@
     const perBedrijf = new Map();
     for (const c of contacten ?? []) { if (!perBedrijf.has(c.bedrijf_id)) perBedrijf.set(c.bedrijf_id, []); perBedrijf.get(c.bedrijf_id).push(c); }
     const zoek = el("input", { type: "search", id: id(), placeholder: "Zoek op bedrijf, naam of e-mail" });
-    const filter = el("select", { id: id() }, [["lid", "Leden"], ["partner", "Partners"], ["opgezegd", "Opgezegd"], ["ontbreekt", "Ontbrekende gegevens"], ["alle", "Alles"]].map(([v, t]) => el("option", { value: v, text: t })));
+    const filter = el("select", { id: id() }, [["lid", "Leden"], ["opgezegd", "Opgezegd"], ["ontbreekt", "Ontbrekende gegevens"], ["alle", "Alles"]].map(([v, t]) => el("option", { value: v, text: t })));
     const tbody = el("tbody");
     const dlg = el("dialog");
     document.body.append(dlg);
@@ -417,7 +417,7 @@
       cs = cs ?? [];
       const f = Object.fromEntries(["naam", "adres", "postcode", "plaats", "kvk", "branche", "website", "factuur_email", "lid_sinds"].map((k) => [k, tekstInvoer(b[k])]));
       // Opzeggen gaat via de knop hieronder (met datum, penningmeester en Brevo), niet via deze keuzelijst.
-      f.status = el("select", { id: id() }, ["lid", "partner", ...(b.status === "opgezegd" ? ["opgezegd"] : [])].map((s) => el("option", { value: s, text: s, selected: b.status === s })));
+      f.status = el("select", { id: id() }, ["lid", ...(b.status === "opgezegd" ? ["opgezegd"] : [])].map((s) => el("option", { value: s, text: s, selected: b.status === s })));
       f.notitie = el("textarea", { id: id() }, b.notitie ?? "");
       const contactRijen = [...cs, ...(isNieuw ? [{ naam: "", email: "", telefoon: "", functie: "", primair: true, actief: true, _nieuw: true }] : [])].map((c) => ({
         c, naam: tekstInvoer(c.naam), email: el("input", { type: "email", id: id(), value: c.email ?? "" }), telefoon: el("input", { type: "tel", id: id(), value: c.telefoon ?? "" }),
@@ -540,7 +540,7 @@
   }
 
   const VIA = { link: "persoonlijke link", bestuur: "bestuur", whatsapp: "WhatsApp", nieuwsbrief: "nieuwsbrief", website: "website", qr: "QR-code" };
-  const MUTATIE = { ingeschreven: "Ingeschreven", partner_toegevoegd: "Partner geworden", opgezegd: "Opgezegd", heringeschreven: "Opnieuw ingeschreven",
+  const MUTATIE = { ingeschreven: "Ingeschreven", partner_toegevoegd: "Partner geworden (vóór 21-11-2026)", opgezegd: "Opgezegd", heringeschreven: "Opnieuw ingeschreven",
     status_gewijzigd: "Soort gewijzigd", profiel_gepubliceerd: "Profiel gepubliceerd", profiel_verborgen: "Profiel verborgen", contactpersoon_verwijderd: "Persoon verwijderd" };
 
   // ------------------------------------------------------------------ profielen
@@ -550,9 +550,46 @@
   };
   const profielStand = (p) => !p || !p.ingediend_op ? "leeg" : p.status === "ingediend" ? "wacht" : p.status === "gepubliceerd" ? (p.voorstel ? "wijziging" : "gepubliceerd") : p.status === "verborgen" ? "verborgen" : "leeg";
 
+  // Profielronde: één mail met de profiellink naar alle leden zonder profiel, en één herinnering na 7 dagen.
+  // Alleen met twee klikken, en in testmodus alleen naar de testadressen.
+  async function rondeKaart() {
+    const uit = el("div", { "aria-live": "polite" }, neem("ronde"));
+    let s;
+    try { s = await actie({ actie: "profielronde_stand" }); }
+    catch (e) { return kaart(el("h2", { text: "Profielronde" }), melding("fout", e.message)); }
+    const datum = (d) => new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "long" });
+    const verslag = (r) => [`Verstuurd: ${r.verzonden}`, r.test ? `in testmodus tegengehouden: ${r.test}` : "", r.overgeslagen ? `overgeslagen (al bezig of al verstuurd): ${r.overgeslagen}` : "",
+      r.fout ? `mislukt: ${r.fout}${r.fouten.length ? ` (${r.fouten.join("; ")})` : ""}` : "", r.resterend ? `nog ${r.resterend} te gaan: klik nogmaals` : ""].filter(Boolean).join(", ") + ".";
+    const verstuurKnop = (tekst, soort) => bevestigKnop(tekst, `Zeker? ${s.testmodus ? "Testmodus: alleen testadressen. " : ""}Klik nogmaals`, async () => {
+      try {
+        const r = await actie({ actie: "profielronde_versturen", soort, bevestigd: true });
+        bewaar("ronde", r.fout ? "let" : "goed", (r.testmodus ? "Testmodus: alleen testadressen kregen de mail; de leden staan nog open. " : "") + verslag(r));
+        profielenScherm();
+      } catch (e) { uit.replaceChildren(melding("fout", e.message)); }
+    });
+    const proef = el("button", { type: "button", class: "knop tweede klein", text: "Proefmail naar mij (ronde en herinnering)" });
+    proef.addEventListener("click", bezig(proef, async () => {
+      try { const r = await actie({ actie: "profielronde_proef" }); uit.replaceChildren(melding(r.fout ? "let" : "goed", `Proefmails naar de testadressen: ${r.verzonden} verstuurd${r.fout ? `, ${r.fout} mislukt` : ""}.`)); }
+      catch (e) { uit.replaceChildren(melding("fout", e.message)); }
+    }));
+    return kaart(el("h2", { text: "Profielronde" }),
+      el("p", { text: "Eén mail met de persoonlijke profiellink naar alle leden die nog geen profiel hebben ingestuurd. Na 7 dagen kan er één herinnering naar wie dan nog niets heeft ingestuurd. Er gaat niets vanzelf: elke verzending start je hier, met twee klikken." }),
+      s.testmodus ? melding("let", "De testmodus staat aan: alleen de testadressen krijgen een mail. Voor de leden telt het nog niet als verstuurd.") : null,
+      el("table", { class: "tabel", style: "margin:8px 0" }, el("tbody", {},
+        el("tr", {}, el("th", { scope: "row", text: "Leden zonder profiel" }), el("td", { text: String(s.zonder_profiel) })),
+        el("tr", {}, el("th", { scope: "row", text: "Profiellink nog te sturen" }), el("td", { text: String(s.ronde_te_sturen) })),
+        el("tr", {}, el("th", { scope: "row", text: "Profiellink gestuurd" }), el("td", { text: String(s.ronde_verstuurd) })),
+        el("tr", {}, el("th", { scope: "row", text: "Herinnering" }), el("td", { text: s.herinnering_te_sturen ? `${s.herinnering_te_sturen} klaar om te sturen` : s.herinnering_wacht ? `${s.herinnering_wacht} wachten tot ${datum(s.herinnering_vanaf)}` : s.herinnerd ? `${s.herinnerd} verstuurd` : "—" })))),
+      s.zonder_adres.length ? melding("let", `Zonder e-mailadres (krijgen niets; vul een adres in bij Leden): ${s.zonder_adres.join(", ")}.`) : null,
+      el("div", { class: "balk" }, proef,
+        s.ronde_te_sturen ? verstuurKnop(`Profiellink naar ${s.ronde_te_sturen} leden zonder profiel`, "ronde") : null,
+        s.herinnering_te_sturen ? verstuurKnop(`Herinnering naar ${s.herinnering_te_sturen} leden`, "herinnering") : null),
+      uit);
+  }
+
   async function profielenScherm(gekozen) {
     const [{ data: bedrijven }, { data: profielen }, { data: contacten }] = await Promise.all([
-      sb.from("bedrijven").select("id, naam, status, toon_in_ledenoverzicht").in("status", ["lid", "partner"]).order("naam"),
+      sb.from("bedrijven").select("id, naam, status, toon_in_ledenoverzicht").eq("status", "lid").order("naam"),
       sb.from("profielen").select("*"),
       sb.from("contactpersonen").select("id, bedrijf_id, naam, email, actief, primair").order("primair", { ascending: false }).order("naam"),
     ]);
@@ -573,7 +610,7 @@
       tbody.replaceChildren(...(rijen.length ? rijen.map((b) => {
         const p = perBedrijf.get(b.id), st = profielStand(p);
         return el("tr", { class: `klik${b.id === gekozen ? " gekozen" : ""}`, onclick: () => (location.hash = `profielen/${b.id}`) },
-          el("td", {}, el("strong", { text: b.naam }), b.status === "partner" ? [" ", pil("partner", "merk")] : null,
+          el("td", {}, el("strong", { text: b.naam }),
             el("div", { class: "hint", text: p?.uitgenodigd_op ? `Link gestuurd ${new Date(p.uitgenodigd_op).toLocaleDateString("nl-NL")}` : "Nog geen link gestuurd" })),
           el("td", {}, pil(...PROFIEL_STATUS[st])));
       }) : [el("tr", {}, el("td", { colspan: 2, text: filter.value === "wacht" ? "Er wacht niets op controle." : "Geen bedrijven in deze lijst." }))]));
@@ -588,7 +625,7 @@
     async function tekenPaneel(b, p, cs) {
       const st = profielStand(p);
       const ingevuld = p ? { ...p, ...(p.voorstel ?? {}) } : null;
-      const kaartVan = async (v) => ik.lidkaart({ naam: b.naam, branche: v.branche, kort: v.kort, foto: await fotoUrl(v.foto_pad), pas: v.foto_weergave, partner: b.status === "partner" });
+      const kaartVan = async (v) => ik.lidkaart({ naam: b.naam, branche: v.branche, kort: v.kort, foto: await fotoUrl(v.foto_pad), pas: v.foto_weergave });
       const delen = [el("div", { class: "balk", style: "margin-top:0" }, el("h2", { text: b.naam, style: "margin:0;flex:1" }), pil(...PROFIEL_STATUS[st]))];
       const melden = (soort, tekst) => { bewaar("profielen", soort, tekst); profielenScherm(b.id); };
 
@@ -670,6 +707,7 @@
 
     inhoud.replaceChildren(
       kaart(el("h1", { text: "Profielen" }), el("p", { text: "De kaarten voor de pagina Onze leden. Niets komt op de website zonder klik van het bestuur, ook een wijziging niet." }), uit),
+      el("div", { style: "margin-top:16px" }, await rondeKaart()),
       el("div", { class: "twee-kol", style: "margin-top:16px" },
         kaart(el("div", { class: "balk", style: "margin-top:0" }, filter, telling),
           el("div", { class: "scroll" }, el("table", { class: "tabel" }, el("thead", {}, el("tr", {}, el("th", { text: "Bedrijf" }), el("th", { text: "Profiel" }))), tbody))),
@@ -697,8 +735,8 @@
       max_per_run: el("input", { type: "number", id: id(), min: 1, max: 300, value: m.max_per_run ?? 120 }),
       meldingen_penningmeester: tekstInvoer((m.meldingen_penningmeester ?? []).join(", ")),
       whatsapp_community_link: el("input", { type: "url", id: id(), value: m.whatsapp_community_link ?? "", placeholder: "https://chat.whatsapp.com/…" }),
-      contributie_jaarbedrag: el("input", { type: "number", id: id(), min: 0, step: "0.01", inputmode: "decimal", value: typeof m.contributie_jaarbedrag === "number" ? m.contributie_jaarbedrag : "" }),
-      brevo_sync_aan: el("select", { id: id() }, [["false", "Uit"], ["true", "Aan: de lijsten Leden en Partners volgen de administratie"]].map(([v, t]) => el("option", { value: v, text: t, selected: String(m.brevo_sync_aan === true) === v }))),
+      contributie_jaarbedrag: el("input", { type: "number", id: id(), min: 0, step: "0.01", inputmode: "decimal", value: typeof m.contributie_jaarbedrag === "number" && m.contributie_jaarbedrag > 0 ? m.contributie_jaarbedrag : "" }),
+      brevo_sync_aan: el("select", { id: id() }, [["false", "Uit"], ["true", "Aan: de lijst Leden volgt de administratie"]].map(([v, t]) => el("option", { value: v, text: t, selected: String(m.brevo_sync_aan === true) === v }))),
       wp_sync_aan: el("select", { id: id() }, [["false", "Uit"], ["true", "Aan: gepubliceerde profielen staan op de pagina Leden"]].map(([v, t]) => el("option", { value: v, text: t, selected: String(m.wp_sync_aan === true) === v }))),
     };
     const lijst = (s) => s.split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -713,7 +751,7 @@
         el("div", { class: "breed" }, veld("Afzenderregel onder elke mail", f.adres_footer)),
         el("div", { class: "breed" }, veld("Melding bij nieuwe lidaanvraag naar", f.meldingen_bestuur, "Ook de melding als een lid zijn profiel instuurt.")),
         el("div", { class: "breed" }, veld("Penningmeester (meldingen bij in- en uitschrijving)", f.meldingen_penningmeester, "Gescheiden door komma's. Leeg: de meldingen wachten tot hier een adres staat.")),
-        el("div", { class: "breed" }, veld("Contributie per jaar (euro)", f.contributie_jaarbedrag, "Staat in de melding \"Nieuw lid\" aan de penningmeester en in het jaaroverzicht, naar rato: de maand van ingang telt mee. Leeg: niets tonen. Alleen voor leden, niet voor partners.")),
+        el("div", { class: "breed" }, veld("Contributie per jaar (euro)", f.contributie_jaarbedrag, "Staat in de melding \"Nieuw lid\" aan de penningmeester en in het jaaroverzicht, naar rato: de maand van ingang telt mee. Leeg: niets tonen.")),
         el("div", { class: "breed" }, veld("Link naar de WhatsApp-community", f.whatsapp_community_link, "Staat op het afsluitscherm van de profielpagina.")),
         el("div", { class: "breed" }, veld("Brevo-lijsten bijhouden", f.brevo_sync_aan, "Zet pas aan als de lijsten bij Brevo hieronder zijn ingericht en een proefvergelijking klopt.")),
         el("div", { class: "breed" }, veld("Website bijhouden", f.wp_sync_aan, "Zet pas aan als het proefbericht en de proefvergelijking hieronder (Website) kloppen."))),
@@ -729,9 +767,10 @@
           max_per_run: Math.min(300, Math.max(1, Number(f.max_per_run.value) || 120)),
           meldingen_penningmeester: lijst(f.meldingen_penningmeester.value), whatsapp_community_link: f.whatsapp_community_link.value.trim(),
           brevo_sync_aan: f.brevo_sync_aan.value === "true", wp_sync_aan: f.wp_sync_aan.value === "true",
-          contributie_jaarbedrag: f.contributie_jaarbedrag.value.trim() === "" ? null : Math.round(Number(f.contributie_jaarbedrag.value.replace(",", ".")) * 100) / 100,
+          // Leeg = 0 (de kolom mag geen null zijn); 0 betekent: niets tonen.
+          contributie_jaarbedrag: f.contributie_jaarbedrag.value.trim() === "" ? 0 : Math.round(Number(f.contributie_jaarbedrag.value.replace(",", ".")) * 100) / 100,
         };
-        if (nieuw.contributie_jaarbedrag !== null && !(nieuw.contributie_jaarbedrag > 0 && nieuw.contributie_jaarbedrag < 100000)) {
+        if (nieuw.contributie_jaarbedrag !== 0 && !(nieuw.contributie_jaarbedrag > 0 && nieuw.contributie_jaarbedrag < 100000)) {
           return uit.replaceChildren(melding("fout", "Vul bij contributie een bedrag in euro's in, of laat het veld leeg."));
         }
         const slecht = [...nieuw.test_ontvangers, ...nieuw.meldingen_bestuur, ...nieuw.meldingen_penningmeester].find((e) => !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(e));
@@ -745,6 +784,14 @@
         }
         uit.replaceChildren(melding("goed", "Opgeslagen."));
         try { status = await actie({ actie: "status" }); toonStatus(); } catch { /* laat staan */ }
+        // Testmodus omgezet: het blok met tegengehouden meldingen opnieuw tekenen (de knoppen hangen ervan af).
+        if (nieuw.testmodus !== (m.testmodus !== false)) {
+          const { count } = await sb.from("verzendlog").select("id", { count: "exact", head: true }).eq("soort", "melding_penningmeester").eq("status", "tegengehouden");
+          bewaar("penning", count ? "let" : "goed", count
+            ? `De testmodus staat ${nieuw.testmodus ? "aan" : "uit"}. Er ${count === 1 ? "wacht 1 tegengehouden melding" : `wachten ${count} tegengehouden meldingen`} aan de penningmeester: kies hieronder per melding of hij alsnog weg moet of weg kan. Er gaat niets vanzelf.`
+            : `De testmodus staat ${nieuw.testmodus ? "aan" : "uit"}.`);
+          instellingenScherm();
+        }
       })();
     });
 
@@ -765,6 +812,7 @@
 
     inhoud.replaceChildren(
       kaart(el("h1", { text: "Instellingen" }), form),
+      el("div", { style: "margin-top:16px" }, await penningKaart(m)),
       el("div", { style: "margin-top:16px" }, kaart(el("h2", { text: "Wie mag beheren" }),
         el("div", { class: "scroll" }, el("table", { class: "tabel" }, el("tbody", {}, (toegestaan ?? []).map((t) => el("tr", {}, el("td", { text: t.naam }), el("td", { text: t.email }),
           el("td", {}, (beheerders ?? []).some((b) => b.email === t.email) ? pil("heeft ingelogd", "goed") : pil("nog niet ingelogd")),
@@ -778,6 +826,38 @@
       el("div", { style: "margin-top:16px" }, await websiteKaart(m)),
       el("div", { style: "margin-top:16px" }, await branchesKaart()),
       el("div", { style: "margin-top:16px" }, await verzendlogKaart()));
+  }
+
+  // Meldingen aan de penningmeester die de testmodus tegenhield. Per melding kiezen; er gaat niets vanzelf.
+  async function penningKaart(m) {
+    const uit = el("div", { "aria-live": "polite" }, neem("penning"));
+    const { data: rijen } = await sb.from("verzendlog").select("id, email, aangemaakt_op, fout, mutaties(soort, bedrijfsnaam, datum)")
+      .eq("soort", "melding_penningmeester").eq("status", "tegengehouden").order("aangemaakt_op");
+    const testmodus = m.testmodus !== false;
+    const SOORT = { ingeschreven: "Nieuw lid", heringeschreven: "Opnieuw lid", opgezegd: "Opzegging", partner_toegevoegd: "Nieuwe partner", status_gewijzigd: "Gewijzigd" };
+    const afhandelen = async (r, keuze) => {
+      try {
+        const a = await actie({ actie: "penning_afhandelen", verzendlog_id: r.id, keuze });
+        bewaar("penning", "goed", keuze === "weggooien" ? `Melding over ${r.mutaties?.bedrijfsnaam ?? "dit bedrijf"} weggegooid.` : `Melding over ${r.mutaties?.bedrijfsnaam ?? "dit bedrijf"} ${a.status === "verzonden" ? "verstuurd" : "afgehandeld"}.`);
+        instellingenScherm();
+      } catch (e) { uit.replaceChildren(melding("fout", e.message)); }
+    };
+    const regels = (rijen ?? []).map((r) => {
+      const stuur = bevestigKnop("Alsnog versturen", "Zeker? Klik nogmaals", () => afhandelen(r, "versturen"), "knop klein");
+      if (testmodus) { stuur.disabled = true; stuur.title = "Kan pas als de testmodus uit staat"; }
+      return el("tr", {},
+        el("td", { text: new Date(r.aangemaakt_op).toLocaleDateString("nl-NL") }),
+        el("td", {}, el("strong", { text: `${SOORT[r.mutaties?.soort] ?? "Mutatie"}: ${r.mutaties?.bedrijfsnaam ?? "onbekend"}` }),
+          el("div", { class: "hint", text: `naar ${r.email}${r.fout ? ` · laatste poging mislukt: ${r.fout}` : ""}` })),
+        el("td", {}, el("div", { class: "balk", style: "margin:0" }, stuur, bevestigKnop("Weggooien", "Zeker? Klik nogmaals", () => afhandelen(r, "weggooien"), "knop tweede klein"))));
+    });
+    return kaart(el("h2", { text: "Tegengehouden meldingen aan de penningmeester" }),
+      el("p", { text: "Zolang de testmodus aan staat, gaat een melding aan de penningmeester (nieuw lid, opnieuw lid, opzegging) niet weg, behalve naar een testadres. Hij gaat ook niet verloren: hij wacht hier. Na het uitzetten van de testmodus kies je per melding: alsnog versturen, of weggooien als hij niet meer klopt (bijvoorbeeld een proef)." }),
+      rijen?.length
+        ? [testmodus ? melding("let", "De testmodus staat aan: versturen kan pas als hij uit staat. Weggooien kan altijd.") : null,
+          el("div", { class: "scroll" }, el("table", { class: "tabel" }, el("tbody", {}, regels)))]
+        : el("p", { class: "hint", text: "Er wachten geen meldingen." }),
+      uit);
   }
 
   async function websiteKaart(m) {
@@ -830,15 +910,15 @@
       return k;
     };
     return kaart(el("h2", { text: "Brevo: nieuwsbrieflijsten en bezorging" }),
-      el("p", { text: "De lijsten Leden en Partners in Brevo volgen de ledenadministratie: direct bij een wijziging en elke nacht volledig. Naar Brevo gaan alleen e-mailadres, naam en bedrijfsnaam. Wie zich afmeldt voor de nieuwsbrief, zetten we nooit terug." }),
+      el("p", { text: "De lijst Leden in Brevo volgt de ledenadministratie: direct bij een wijziging en elke nacht volledig. Naar Brevo gaan alleen e-mailadres, naam en bedrijfsnaam. Wie zich afmeldt voor de nieuwsbrief, zetten we nooit terug." }),
       el("table", { class: "tabel", style: "margin:8px 0" }, el("tbody", {},
         el("tr", {}, el("th", { scope: "row", text: "Sleutel" }), el("td", {}, status?.mail_gekoppeld ? pil("ingesteld", "goed") : pil("ontbreekt", "let"))),
-        el("tr", {}, el("th", { scope: "row", text: "Lijsten" }), el("td", { text: m.brevo_lijst_leden && m.brevo_lijst_partners ? `Leden (nr. ${m.brevo_lijst_leden}) en Partners (nr. ${m.brevo_lijst_partners})` : "nog niet ingericht" })),
+        el("tr", {}, el("th", { scope: "row", text: "Lijsten" }), el("td", { text: m.brevo_lijst_leden ? `Leden (nr. ${m.brevo_lijst_leden})` : "nog niet ingericht" })),
         el("tr", {}, el("th", { scope: "row", text: "Bijhouden" }), el("td", {}, m.brevo_sync_aan === true ? pil("aan", "goed") : pil("uit"))),
         el("tr", {}, el("th", { scope: "row", text: "Wachtrij" }), el("td", { text: `${open} open, ${mislukt.length} mislukt` })))),
       mislukt.length ? el("details", {}, el("summary", { text: "Mislukte koppelingen" }), el("ul", {}, mislukt.slice(0, 10).map((t) => el("li", { text: `${new Date(t.bijgewerkt_op).toLocaleString("nl-NL")}: ${t.fout}` })))) : null,
       el("div", { class: "balk" },
-        knop("Lijsten in Brevo inrichten", { actie: "brevo_inrichten" }, (r) => `Klaar: Leden is lijst ${r.lijsten.brevo_lijst_leden}, Partners is lijst ${r.lijsten.brevo_lijst_partners}. Ververs de pagina om ze te zien.`),
+        knop("Lijst in Brevo inrichten", { actie: "brevo_inrichten" }, (r) => `Klaar: Leden is lijst ${r.lijsten.brevo_lijst_leden}. Ververs de pagina om hem te zien.`),
         knop("Webhook voor bezorgfouten instellen", { actie: "brevo_webhook" }, (r) => `Webhook: ${Object.entries(r.webhooks).map(([k, v]) => `${k === "transactional" ? "mail" : "nieuwsbrief"} ${v}`).join(", ")}.`),
         knop("Proef: vergelijken zonder te wijzigen", { actie: "brevo_vergelijken", droog: true }, (r) => `In Brevo: ${r.in_brevo} adressen. Erbij te zetten: ${r.erbij}. Eraf te halen: ${r.eraf}${r.eraf_adressen?.length ? ` (${r.eraf_adressen.join(", ")}${r.eraf > r.eraf_adressen.length ? ", …" : ""})` : ""}. Er is niets gewijzigd.`),
         m.brevo_sync_aan === true ? knop("Nu gelijktrekken", { actie: "brevo_vergelijken", droog: false }, (r) => `Bijgewerkt: ${r.bijgewerkt} adressen${r.fouten.length ? `; mislukt: ${r.fouten.join("; ")}` : ""}.`, "knop klein") : null),
