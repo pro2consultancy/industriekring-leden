@@ -605,13 +605,17 @@
           ...[["Meer over het bedrijf", ingevuld.lang || "—"], ["Website", ingevuld.website || "—"],
             ["Contactpersoon op de site", ingevuld.toon_contactpersoon ? contact?.naam || "ja" : "nee"],
             ["Foto of logo", ingevuld.foto_pad ? `${ingevuld.foto_weergave === "vullend" ? "vult het vak" : "hele afbeelding"}${ingevuld.foto_toestemming ? ", gebruik bevestigd" : ""}` : "geen"],
-            ["Ingestuurd", p.ingediend_op ? new Date(p.ingediend_op).toLocaleString("nl-NL") : "—"]]
+            ["Ingestuurd", p.ingediend_op ? new Date(p.ingediend_op).toLocaleString("nl-NL") : "—"],
+            ["Op de website", !p.wp_post_id ? "nee" : p.wp_status === "publish" ? `ja (bericht ${p.wp_post_id}${p.wp_gesynct_op ? `, bijgewerkt ${new Date(p.wp_gesynct_op).toLocaleString("nl-NL")}` : ""})` : `als concept, niet zichtbaar (bericht ${p.wp_post_id})`]]
             .flatMap(([k, v]) => [el("dt", { class: "hint", text: k }), el("dd", { style: "margin:0 0 6px;white-space:pre-wrap;overflow-wrap:anywhere", text: v })])));
         const knoppen = el("div", { class: "balk" });
         if (wacht || st === "verborgen") {
           const pub = el("button", { type: "button", class: "knop", text: "Publiceren", disabled: !b.toon_in_ledenoverzicht });
           pub.addEventListener("click", bezig(pub, async () => {
-            try { await actie({ actie: "profiel_publiceren", bedrijf_id: b.id }); melden("goed", `Het profiel van ${b.naam} is gepubliceerd.`); }
+            try {
+              const r = await actie({ actie: "profiel_publiceren", bedrijf_id: b.id });
+              melden(r.website?.fout ? "let" : "goed", `Het profiel van ${b.naam} is gepubliceerd.${r.website?.fout ? " De website bijwerken lukte nog niet; de nachtelijke taak probeert het opnieuw (zie Instellingen, Website)." : status?.wp_sync_aan ? " De kaart staat op de website." : ""}`);
+            }
             catch (e) { uit.replaceChildren(melding("fout", e.message)); }
           }));
           knoppen.append(pub);
@@ -634,7 +638,9 @@
           knoppen.append(waKnop);
           delen.push(knoppen, wa);
         } else delen.push(knoppen);
-        delen.push(el("p", { class: "hint", text: "Publiceren betekent nu: goedgekeurd door het bestuur. De koppeling die de kaart automatisch op de website zet, volgt; tot die tijd plaatst de webbeheerder hem." }));
+        delen.push(el("p", { class: "hint", text: status?.wp_sync_aan
+          ? "Publiceren zet de kaart meteen op de pagina Leden van de website; verbergen zet hem daar op concept."
+          : "Publiceren betekent nu: goedgekeurd door het bestuur. De website-koppeling staat uit (Instellingen); tot die aan staat, plaatst de webbeheerder de kaart." }));
       }
 
       // Profiellink sturen of kopiëren
@@ -692,6 +698,7 @@
       whatsapp_community_link: el("input", { type: "url", id: id(), value: m.whatsapp_community_link ?? "", placeholder: "https://chat.whatsapp.com/…" }),
       contributie_jaarbedrag: el("input", { type: "number", id: id(), min: 0, step: "0.01", inputmode: "decimal", value: typeof m.contributie_jaarbedrag === "number" ? m.contributie_jaarbedrag : "" }),
       brevo_sync_aan: el("select", { id: id() }, [["false", "Uit"], ["true", "Aan: de lijsten Leden en Partners volgen de administratie"]].map(([v, t]) => el("option", { value: v, text: t, selected: String(m.brevo_sync_aan === true) === v }))),
+      wp_sync_aan: el("select", { id: id() }, [["false", "Uit"], ["true", "Aan: gepubliceerde profielen staan op de pagina Leden"]].map(([v, t]) => el("option", { value: v, text: t, selected: String(m.wp_sync_aan === true) === v }))),
     };
     const lijst = (s) => s.split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
     const knop = el("button", { type: "submit", class: "knop", text: "Instellingen opslaan" });
@@ -707,7 +714,8 @@
         el("div", { class: "breed" }, veld("Penningmeester (meldingen bij in- en uitschrijving)", f.meldingen_penningmeester, "Gescheiden door komma's. Leeg: de meldingen wachten tot hier een adres staat.")),
         el("div", { class: "breed" }, veld("Contributie per jaar (euro)", f.contributie_jaarbedrag, "Staat in de melding \"Nieuw lid\" aan de penningmeester en in het jaaroverzicht, naar rato: de maand van ingang telt mee. Leeg: niets tonen. Alleen voor leden, niet voor partners.")),
         el("div", { class: "breed" }, veld("Link naar de WhatsApp-community", f.whatsapp_community_link, "Staat op het afsluitscherm van de profielpagina.")),
-        el("div", { class: "breed" }, veld("Brevo-lijsten bijhouden", f.brevo_sync_aan, "Zet pas aan als de lijsten bij Brevo hieronder zijn ingericht en een proefvergelijking klopt."))),
+        el("div", { class: "breed" }, veld("Brevo-lijsten bijhouden", f.brevo_sync_aan, "Zet pas aan als de lijsten bij Brevo hieronder zijn ingericht en een proefvergelijking klopt.")),
+        el("div", { class: "breed" }, veld("Website bijhouden", f.wp_sync_aan, "Zet pas aan als het proefbericht en de proefvergelijking hieronder (Website) kloppen."))),
       el("div", { class: "balk" }, knop), uit);
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -719,7 +727,7 @@
           adres_footer: f.adres_footer.value.trim(), meldingen_bestuur: lijst(f.meldingen_bestuur.value),
           max_per_run: Math.min(300, Math.max(1, Number(f.max_per_run.value) || 120)),
           meldingen_penningmeester: lijst(f.meldingen_penningmeester.value), whatsapp_community_link: f.whatsapp_community_link.value.trim(),
-          brevo_sync_aan: f.brevo_sync_aan.value === "true",
+          brevo_sync_aan: f.brevo_sync_aan.value === "true", wp_sync_aan: f.wp_sync_aan.value === "true",
           contributie_jaarbedrag: f.contributie_jaarbedrag.value.trim() === "" ? null : Math.round(Number(f.contributie_jaarbedrag.value.replace(",", ".")) * 100) / 100,
         };
         if (nieuw.contributie_jaarbedrag !== null && !(nieuw.contributie_jaarbedrag > 0 && nieuw.contributie_jaarbedrag < 100000)) {
@@ -766,13 +774,48 @@
             }, "knop klein tweede"))))))),
         el("h3", { text: "Iemand toegang geven", style: "margin-top:16px" }), beheerForm, beheerUit)),
       el("div", { style: "margin-top:16px" }, await brevoKaart(m)),
+      el("div", { style: "margin-top:16px" }, await websiteKaart(m)),
       el("div", { style: "margin-top:16px" }, await branchesKaart()),
       el("div", { style: "margin-top:16px" }, await verzendlogKaart()));
   }
 
+  async function websiteKaart(m) {
+    const uit = el("div", { "aria-live": "polite" });
+    const { data: taken } = await sb.from("koppeltaken").select("status, fout, bijgewerkt_op").in("soort", ["wp_profiel", "wp_bericht"]).in("status", ["open", "fout"]).order("bijgewerkt_op", { ascending: false }).limit(50);
+    const open = (taken ?? []).filter((t) => t.status === "open").length;
+    const mislukt = (taken ?? []).filter((t) => t.status === "fout");
+    const proef = Number.isInteger(m.wp_proef_bericht?.post) ? m.wp_proef_bericht.post : null;
+    const link = (href, tekst) => el("a", { href, text: tekst, target: "_blank", rel: "noopener" });
+    const knop = (tekst, body, klaar, klasse = "knop tweede klein") => {
+      const k = el("button", { type: "button", class: klasse, text: tekst });
+      k.addEventListener("click", bezig(k, async () => {
+        try { const r = await actie(body); uit.replaceChildren(...[klaar(r)].flat()); }
+        catch (e) { uit.replaceChildren(melding("fout", e.message)); }
+      }));
+      return k;
+    };
+    const namen = (l, n) => l?.length ? ` (${l.join(", ")}${n > l.length ? ", …" : ""})` : "";
+    return kaart(el("h2", { text: "Website: de pagina Leden" }),
+      el("p", { text: "Een gepubliceerd profiel komt als kaart op de pagina Leden van industriekringterapel.nl. Verbergen, opzeggen of een ingetrokken toestemming zet de kaart op concept; er wordt niets weggegooid. De koppeling wijzigt alleen kaarten die hij zelf heeft gemaakt." }),
+      el("table", { class: "tabel", style: "margin:8px 0" }, el("tbody", {},
+        el("tr", {}, el("th", { scope: "row", text: "Inloggegevens" }), el("td", {}, status?.wp_gekoppeld ? pil("ingesteld", "goed") : pil("ontbreken", "let"))),
+        el("tr", {}, el("th", { scope: "row", text: "Bijhouden" }), el("td", {}, m.wp_sync_aan === true ? pil("aan", "goed") : pil("uit"))),
+        el("tr", {}, el("th", { scope: "row", text: "Proefbericht" }), el("td", { text: proef ? `nr. ${proef} (concept, niet zichtbaar)` : "geen" })),
+        el("tr", {}, el("th", { scope: "row", text: "Wachtrij" }), el("td", { text: `${open} open, ${mislukt.length} mislukt` })))),
+      mislukt.length ? el("details", {}, el("summary", { text: "Mislukte koppelingen" }), el("ul", {}, mislukt.slice(0, 10).map((t) => el("li", { text: `${new Date(t.bijgewerkt_op).toLocaleString("nl-NL")}: ${t.fout}` })))) : null,
+      el("div", { class: "balk" },
+        knop(proef ? "Proefbericht bijwerken" : "Proefbericht plaatsen (concept)", { actie: "wp_proef" }, (r) => melding("goed", el("span", {},
+          `Proefbericht ${r.post} staat als concept op de website (niet zichtbaar voor bezoekers). `, link(r.bewerken, "Bekijken in WordPress"), ", ", link(r.bekijken, "voorbeeld"), " (alleen als je in WordPress bent ingelogd)."))),
+        proef ? knop("Proefbericht weghalen", { actie: "wp_proef_weg" }, () => melding("goed", "Het proefbericht en de afbeelding zijn weggehaald. Ververs de pagina.")) : null,
+        knop("Proef: vergelijken zonder te schrijven", { actie: "wp_vergelijken", droog: true }, (r) => melding("goed",
+          `Erbij te zetten: ${r.nieuw}${namen(r.namen.nieuw, r.nieuw)}. Bij te werken: ${r.bijwerken}${namen(r.namen.bijwerken, r.bijwerken)}. Op concept te zetten: ${r.naar_concept}${namen(r.namen.naar_concept, r.naar_concept)}.${r.categorie_leden ? "" : " Let op: de categorie Leden is niet gevonden."} Er is niets gewijzigd.`)),
+        m.wp_sync_aan === true ? knop("Nu gelijktrekken", { actie: "wp_vergelijken", droog: false }, (r) => melding(r.fouten.length ? "let" : "goed", `Bijgewerkt: ${r.gedaan} kaarten${r.fouten.length ? `; mislukt: ${r.fouten.join("; ")}` : ""}.`), "knop klein") : null),
+      uit);
+  }
+
   async function brevoKaart(m) {
     const uit = el("div", { "aria-live": "polite" });
-    const { data: taken } = await sb.from("koppeltaken").select("status, fout, bijgewerkt_op, pogingen").in("status", ["open", "fout"]).order("bijgewerkt_op", { ascending: false }).limit(50);
+    const { data: taken } = await sb.from("koppeltaken").select("status, fout, bijgewerkt_op, pogingen").eq("soort", "brevo_contact").in("status", ["open", "fout"]).order("bijgewerkt_op", { ascending: false }).limit(50);
     const open = (taken ?? []).filter((t) => t.status === "open").length;
     const mislukt = (taken ?? []).filter((t) => t.status === "fout");
     const knop = (tekst, body, klaar, klasse = "knop tweede klein") => {
