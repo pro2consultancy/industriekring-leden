@@ -717,11 +717,19 @@
 
   // ------------------------------------------------------------------ instellingen
   async function instellingenScherm() {
-    const [{ data: rijen }, { data: beheerders }, { data: toegestaan }] = await Promise.all([
+    const [{ data: rijen }, { data: toegestaan }, inlog] = await Promise.all([
       sb.from("instellingen").select("*").order("sleutel"),
-      sb.from("beheerders").select("naam, email"),
       sb.from("beheerder_toegestaan").select("naam, email").order("naam"),
+      // Werkelijke laatste inlog (auth); null = niet op te halen, dan tonen we niets in plaats van iets onjuists.
+      actie({ actie: "beheerders_inlog" }).then((a) => a.inlog ?? null).catch(() => null),
     ]);
+    const inlogPil = (email) => {
+      if (!inlog) return pil("laatste inlog onbekend");
+      const op = inlog[email.toLowerCase()];
+      if (!op) return pil("nog niet ingelogd");
+      const d = new Date(op);
+      return pil(`laatst ingelogd op ${d.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })} om ${d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`, "goed");
+    };
     const m = Object.fromEntries((rijen ?? []).map((r) => [r.sleutel, r.waarde]));
     const uit = el("div", { "aria-live": "polite" });
     const f = {
@@ -815,7 +823,7 @@
       el("div", { style: "margin-top:16px" }, await penningKaart(m)),
       el("div", { style: "margin-top:16px" }, kaart(el("h2", { text: "Wie mag beheren" }),
         el("div", { class: "scroll" }, el("table", { class: "tabel" }, el("tbody", {}, (toegestaan ?? []).map((t) => el("tr", {}, el("td", { text: t.naam }), el("td", { text: t.email }),
-          el("td", {}, (beheerders ?? []).some((b) => b.email === t.email) ? pil("heeft ingelogd", "goed") : pil("nog niet ingelogd")),
+          el("td", {}, inlogPil(t.email)),
           el("td", {}, t.email === sessie.user.email?.toLowerCase() ? el("span", { class: "hint", text: "dat ben jij" }) :
             bevestigKnop("Toegang intrekken", "Zeker? Klik nogmaals", async () => {
               const { error } = await sb.from("beheerder_toegestaan").delete().eq("email", t.email);
