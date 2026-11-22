@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Afmelden nieuwsberichten · Industriekring Ter Apel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="../assets/stijl.css">
+<link rel="icon" href="../assets/favicon.png">
+<style>#inhoud > * + * { margin-top: 16px; }</style>
+</head>
+<body>
+<header class="kop"><div class="binnen">
+  <img src="../assets/logo-wit.png" alt="Industriekring Ter Apel">
+  <span class="label">Nieuwsberichten</span>
+</div></header>
+
+<main id="inhoud" aria-live="polite">
+  <div class="kaart"><p>Even laden…</p></div>
+</main>
+<p class="voet">Industriekring Ter Apel en omstreken · <a href="mailto:info@industriekringterapel.nl">info@industriekringterapel.nl</a></p>
+
+<script src="../assets/config.js"></script>
+<script src="../assets/gedeeld.js"></script>
+<script>
+// Afmelden voor nieuwsberichten van de kring. Eerst een knop (een mailscanner die de link opent, meldt
+// niemand af); uitnodigingen voor bijeenkomsten blijven komen.
+(() => {
+  const { el, functie } = window.ik;
+  const main = document.getElementById("inhoud");
+  const p = new URLSearchParams(location.search);
+  const c = p.get("c") || "", h = p.get("h") || "";
+  const query = `?afmelden=1&c=${encodeURIComponent(c)}&h=${encodeURIComponent(h)}`;
+  const melding = (soort, tekst) => el("div", { class: `melding ${soort}`, role: soort === "fout" ? "alert" : "status" }, tekst);
+  const toon = (...k) => main.replaceChildren(el("div", { class: "kaart" }, el("h1", { text: "Nieuwsberichten van de kring" }), ...k));
+
+  async function start() {
+    if (c === "voorbeeld") return toon(melding("let", "Dit is de afmeldlink uit een proefmail; hij doet niets."));
+    try { await functie("berichten", { query }); }
+    catch (e) { return toon(melding("fout", e.message)); }
+    const knop = el("button", { type: "button", class: "knop", text: "Afmelden voor nieuwsberichten" });
+    knop.addEventListener("click", async () => {
+      knop.disabled = true; knop.textContent = "Bezig…";
+      try {
+        await functie("berichten", { method: "POST", query, body: { c, h } });
+        toon(melding("goed", "Je bent afgemeld. Je krijgt geen nieuwsberichten van de kring meer."),
+          el("p", { text: "Uitnodigingen voor bijeenkomsten blijf je krijgen. Toch weer nieuwsberichten ontvangen? Antwoord op een mail van de kring." }));
+      } catch (e) { knop.disabled = false; knop.textContent = "Afmelden voor nieuwsberichten"; main.append(melding("fout", e.message)); }
+    });
+    toon(el("p", { text: "Wil je geen nieuwsberichten van de Industriekring meer per mail? Uitnodigingen voor bijeenkomsten blijf je dan wel krijgen." }), el("div", {}, knop));
+  }
+  start();
+})();
+</script>
+</body>
+</html>

@@ -112,6 +112,8 @@
     const wie = document.getElementById("wie");
     wie.replaceChildren(ik.naam, " · ", el("a", { href: "#", style: "color:inherit", onclick: async (e) => { e.preventDefault(); await sb.auth.signOut(); location.hash = ""; inlogScherm(); }, text: "uitloggen" }));
     tabs.classList.remove("verborgen");
+    const { data: namen } = await sb.from("beheerder_toegestaan").select("naam, email");
+    for (const n of namen ?? []) beheerderNamen[n.email.toLowerCase()] = n.naam;
     toonStatus();
     route();
   }
@@ -123,11 +125,19 @@
     statusbalk.replaceChildren(...delen.map((d) => el("div", { style: "margin-bottom:10px" }, d)));
   }
 
+  // Berichten per kanaal (onderdeel 8) staan in berichten.js.
+  const beheerderNamen = {};
+  const berichten = window.ikBerichten({
+    sb, inhoud, el, melding, kaart, pil, veld, id, tekstInvoer, bezig, bevestigKnop, bewaar, neem, naarLokaal, datumLang, tijd,
+    beheerderNaam: (email) => beheerderNamen[String(email).toLowerCase()] ?? null,
+    herteken: () => route(),
+  });
+
   window.addEventListener("hashchange", route);
   function route() {
     if (!sessie) return;
-    const [deel, sub] = location.hash.replace(/^#/, "").split("/");
-    const actief = `#${deel === "bijeenkomst" || !deel ? "bijeenkomsten" : deel}`;
+    const [deel, sub, extra] = location.hash.replace(/^#/, "").split("/");
+    const actief = `#${deel === "bijeenkomst" || !deel ? "bijeenkomsten" : deel === "bericht" ? "berichten" : deel}`;
     for (const a of tabs.querySelectorAll("a")) {
       if (a.getAttribute("href") === actief) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     }
@@ -137,6 +147,8 @@
     if (deel === "aanvragen") return aanvragenScherm();
     if (deel === "profielen") return profielenScherm(sub);
     if (deel === "instellingen") return instellingenScherm();
+    if (deel === "berichten") return berichten.lijstScherm();
+    if (deel === "bericht") return berichten.berichtScherm(sub, /^[0-9a-f-]{36}$/.test(extra ?? "") ? extra : null);
     return bijeenkomstenScherm();
   }
 
@@ -237,7 +249,8 @@
     const delen = nieuw
       ? [kaart(el("h1", { text: "Nieuwe bijeenkomst" }), form)]
       : [el("div", {}, el("a", { href: "#bijeenkomsten", text: "← Alle bijeenkomsten" }), el("h1", { text: b.titel, style: "margin:8px 0 2px" }),
-          el("p", { class: "hint", style: "margin:0", text: `${datumLang(b.start)}, ${tijd(b.start)} uur${b.locatie ? ` · ${b.locatie}` : ""}` })),
+          el("p", { class: "hint", style: "margin:0", text: `${datumLang(b.start)}, ${tijd(b.start)} uur${b.locatie ? ` · ${b.locatie}` : ""}` }),
+          el("p", { style: "margin:8px 0 0" }, el("a", { href: `#bericht/nieuw/${b.id}`, text: "Bericht maken voor mail, LinkedIn, Facebook en WhatsApp" }))),
         await uitnodigingenDeel(b),
         kaart(el("h2", { text: "Gegevens van de bijeenkomst" }), form)];
     inhoud.replaceChildren(...delen.map((d) => el("div", { style: "margin-bottom:16px" }, d)));
@@ -830,6 +843,7 @@
               if (error) beheerUit.replaceChildren(melding("fout", "Intrekken lukte niet.")); else instellingenScherm();
             }, "knop klein tweede"))))))),
         el("h3", { text: "Iemand toegang geven", style: "margin-top:16px" }), beheerForm, beheerUit)),
+      el("div", { style: "margin-top:16px" }, await berichten.instellingenKaart(m, toegestaan)),
       el("div", { style: "margin-top:16px" }, await brevoKaart(m)),
       el("div", { style: "margin-top:16px" }, await websiteKaart(m)),
       el("div", { style: "margin-top:16px" }, await branchesKaart()),
@@ -965,7 +979,7 @@
   async function verzendlogKaart() {
     const { data } = await sb.from("verzendlog").select("aangemaakt_op, email, soort, status, fout, afgeleverd_op").order("id", { ascending: false }).limit(30);
     const SOORT = { welkom: "welkom", melding_bestuur: "melding bestuur", melding_profiel: "profiel ingestuurd", melding_penningmeester: "penningmeester",
-      profiel_uitnodiging: "profiellink", adres_gewijzigd: "adres gewijzigd", bevestiging: "bevestiging", uitnodiging: "uitnodiging", herinnering: "herinnering", herinnering_komt: "tot morgen", proef: "proef" };
+      profiel_uitnodiging: "profiellink", nieuwsbericht: "nieuwsbericht", profiel_ronde: "profielronde", profiel_herinnering: "herinnering profiel", adres_gewijzigd: "adres gewijzigd", bevestiging: "bevestiging", uitnodiging: "uitnodiging", herinnering: "herinnering", herinnering_komt: "tot morgen", proef: "proef" };
     return kaart(el("h2", { text: "Laatste mails" }),
       el("p", { class: "hint", text: "'Verzonden' betekent: Brevo heeft de mail aangenomen. Weigert Brevo hem daarna, dan meldt de webhook dat hier als 'geweigerd', met de reden." }),
       el("div", { class: "scroll" }, el("table", { class: "tabel" }, el("tbody", {}, (data ?? []).length ? data.map((l) => el("tr", {},

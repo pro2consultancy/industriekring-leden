@@ -46,6 +46,16 @@
   .linkrij code { font-size: 13px; overflow-wrap: anywhere; }
   @media (max-width: 560px) { .linkrij { grid-template-columns: minmax(0, 1fr) auto; } .linkrij code { grid-column: 1 / -1; grid-row: 2; } }
   .qr svg { width: 180px; height: 180px; display: block; background: #fff; }
+  /* berichten per kanaal (stap 9 van de demo) */
+  .bericht-raster { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 28px; align-items: start; }
+  @media (max-width: 860px) { .bericht-raster { grid-template-columns: minmax(0, 1fr); } }
+  .stapel { display: grid; gap: 16px; min-width: 0; }
+  .kanalen { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--lijn); }
+  .kanalen button { font: inherit; background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; min-height: 44px; font-weight: 600; color: var(--gedempt); cursor: pointer; }
+  .kanalen button[aria-pressed="true"] { color: var(--merk); border-bottom-color: var(--accent); }
+  .beeldvak canvas { display: block; width: 100%; height: auto; border: 1px solid var(--lijn); }
+  .beeldvak.vierkant { max-width: 400px; }
+  fieldset legend { padding: 0; }
   details > summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   @media print {
     .kop, .tabs, .balk, .geen-print, #statusbalk { display: none !important; }
@@ -65,6 +75,7 @@
     <a href="#leden">Leden</a>
     <a href="#aanvragen">Aanmeldingen lid</a>
     <a href="#profielen">Profielen</a>
+    <a href="#berichten">Berichten</a>
     <a href="#instellingen">Instellingen</a>
   </nav>
   <div id="inhoud" aria-live="polite"><div class="kaart"><p>Even laden…</p></div></div>
@@ -73,6 +84,8 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k" crossorigin="anonymous"></script>
 <script src="../assets/config.js"></script>
 <script src="../assets/gedeeld.js"></script>
+<script src="beelden.js"></script>
+<script src="berichten.js"></script>
 <script src="beheer.js"></script>
 </body>
 </html>
