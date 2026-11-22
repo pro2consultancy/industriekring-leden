@@ -31,8 +31,8 @@
   const { el, functie } = window.ik;
   const main = document.getElementById("inhoud");
   const p = new URLSearchParams(location.search);
-  const c = p.get("c") || "", h = p.get("h") || "";
-  const query = `?afmelden=1&c=${encodeURIComponent(c)}&h=${encodeURIComponent(h)}`;
+  const c = p.get("c") || "", h = p.get("h") || "", proef = p.get("p") === "1";
+  const query = `?afmelden=1&c=${encodeURIComponent(c)}&h=${encodeURIComponent(h)}${proef ? "&p=1" : ""}`;
   const melding = (soort, tekst) => el("div", { class: `melding ${soort}`, role: soort === "fout" ? "alert" : "status" }, tekst);
   const toon = (...k) => main.replaceChildren(el("div", { class: "kaart" }, el("h1", { text: "Nieuwsberichten van de kring" }), ...k));
 
@@ -44,7 +44,8 @@
     knop.addEventListener("click", async () => {
       knop.disabled = true; knop.textContent = "Bezig…";
       try {
-        await functie("berichten", { method: "POST", query, body: { c, h } });
+        const r = await functie("berichten", { method: "POST", query, body: { c, h } });
+        if (r.proef) return toon(melding("let", "Proef geslaagd: dit was de afmeldlink uit een proefmail. Er is niemand afgemeld. Bij een echt nieuwsbericht staat hier: \"Je bent afgemeld. Je krijgt geen nieuwsberichten van de kring meer.\""));
         toon(melding("goed", "Je bent afgemeld. Je krijgt geen nieuwsberichten van de kring meer."),
           el("p", { text: "Uitnodigingen voor bijeenkomsten blijf je krijgen. Toch weer nieuwsberichten ontvangen? Antwoord op een mail van de kring." }));
       } catch (e) { knop.disabled = false; knop.textContent = "Afmelden voor nieuwsberichten"; main.append(melding("fout", e.message)); }
