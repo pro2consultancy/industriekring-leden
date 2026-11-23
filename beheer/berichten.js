@@ -305,7 +305,7 @@ window.ikBerichten = (c) => {
         if (k === "mail" && S.id) {
           const proef = el("button", { type: "button", class: "knop tweede klein", text: "Proefmail naar mij" });
           proef.addEventListener("click", bezig(proef, async () => {
-            try { const r = await berichtActie({ actie: "proefmail", bericht_id: S.id }); toon(r.aan.length ? "goed" : "let", r.aan.length ? `Proefmail verstuurd naar ${r.aan.join(", ")}.` : "Niet verstuurd (mail nog niet gekoppeld?)."); }
+            try { const r = await berichtActie({ actie: "proefmail", bericht_id: S.id }); const niet = r.overgeslagen?.length ? ` Niet naar ${r.overgeslagen.join(", ")}: afgemeld voor nieuwsberichten.` : ""; toon(r.aan.length ? "goed" : "let", (r.aan.length ? `Proefmail verstuurd naar ${r.aan.join(", ")}.` : r.overgeslagen?.length ? "Niet verstuurd." : "Niet verstuurd (mail nog niet gekoppeld?).") + niet); }
             catch (e) { toon("fout", e.message); }
           }));
           if (!opgeslagen) proef.disabled = true;
