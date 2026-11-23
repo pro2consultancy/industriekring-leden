@@ -395,10 +395,22 @@ window.ikBerichten = (c) => {
         c.herteken();
       } catch (e) { toon("fout", e.message); }
     }));
-    const proef = bevestigKnop("Proef: concept in Buffer", "Zeker? Er komt een concept in Buffer dat meteen weer weggaat", async () => {
-      try { const r = await berichtActie({ actie: "buffer_proef", bevestigd: true, buffer_kanaal_id: proefKanaal.value }); toon("goed", r.stappen.join(" ")); }
-      catch (e) { toon("fout", e.message); }
+    // Proef in twee stappen: concept in Buffer (met tekst en beeld van een bericht), nakijken in Buffer, weghalen.
+    const { data: proefBerichten } = await sb.from("berichten").select("id, titel").order("aangemaakt_op", { ascending: false }).limit(20);
+    const proefBericht = el("select", { id: id(), "aria-label": "Tekst en beeld van" }, [el("option", { value: "", text: "vaste proeftekst, zonder beeld" }),
+      ...(proefBerichten ?? []).map((x) => el("option", { value: x.id, text: `tekst en beeld van: ${x.titel}` }))]);
+    const concept = stand?.proef_concept;
+    const proef = bevestigKnop("Proef: concept in Buffer", "Zeker? Er komt een concept in Buffer (niet zichtbaar op LinkedIn of Facebook)", async () => {
+      try {
+        const r = await berichtActie({ actie: "buffer_proef", bevestigd: true, buffer_kanaal_id: proefKanaal.value, bericht_id: proefBericht.value || null });
+        bewaar("berichten", "goed", r.stappen.join(" ")); c.herteken();
+      } catch (e) { toon("fout", e.message); }
     }, "knop tweede klein");
+    const proefWeg = el("button", { type: "button", class: "knop klein", text: "Proefconcept weghalen uit Buffer" });
+    proefWeg.addEventListener("click", bezig(proefWeg, async () => {
+      try { const r = await berichtActie({ actie: "buffer_proef_weg" }); bewaar("berichten", "goed", r.uitkomst); c.herteken(); }
+      catch (e) { toon("fout", e.message); }
+    }));
     const g = stand?.gebruik;
     return kaart(el("h2", { text: "Berichten: Buffer en wie mag plaatsen" }),
       el("p", { text: "LinkedIn en Facebook gaan via Buffer. Er gaat nooit iets vanzelf: een beheerder bevestigt elk bericht met twee klikken. In de testmodus, of met de schakelaar uit, toont het beheer alleen wat er geplaatst zou worden." }),
@@ -407,7 +419,9 @@ window.ikBerichten = (c) => {
         el("tr", {}, el("th", { scope: "row", text: "Kanalen" }), el("td", { text: stand?.buffer ? (kanalenLijst.length ? kanalenLijst.map((x) => `${x.naam} (${x.service})`).join(", ") : "geen LinkedIn of Facebook") + ` · opgehaald ${new Date(stand.buffer.opgehaald_op).toLocaleString("nl-NL")}` : "nog niet opgehaald" })),
         el("tr", {}, el("th", { scope: "row", text: "Verzoeken" }), el("td", { text: g ? `${g.dertig} in 30 dagen (wij stoppen bij ${g.grenzen.dertigDagen}; Buffer bij 3.000), ${g.dag} vandaag` : "onbekend" })),
         el("tr", {}, el("th", { scope: "row", text: "Ingepland per kanaal" }), el("td", { text: `hooguit ${stand?.max_ingepland ?? 8} tegelijk (Buffer gratis: 10)` })))),
-      el("div", { class: "balk" }, ophalen, kanalenLijst.length ? proefKanaal : null, kanalenLijst.length ? proef : null),
+      concept ? el("div", {}, melding("let", `Er staat een proefconcept in Buffer bij ${concept.kanaal} (sinds ${new Date(concept.aangemaakt_op).toLocaleString("nl-NL")}). Kijk het na bij Concepten in Buffer en haal het daarna weg; na twee uur gaat het vanzelf weg.`),
+        el("div", { class: "balk" }, proefWeg)) : null,
+      el("div", { class: "balk" }, ophalen, kanalenLijst.length && !concept ? [proefKanaal, proefBericht, proef] : null),
       el("h3", { text: "Schakelaar", style: "margin-top:12px" }),
       veld("Berichten plaatsen via Buffer", aan, "Zet pas aan na een geslaagde proef en een proefbericht dat je hebt nagelezen."),
       el("h3", { text: "Wie mag plaatsen", style: "margin-top:12px" }),

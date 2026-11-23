@@ -416,7 +416,7 @@
           el("td", {}, cs.map((c) => el("div", {}, c.naam || pil("naam ontbreekt", "let"), c.primair ? null : [" ", pil("geen mail")], c.actief ? null : [" ", pil("inactief")]))),
           el("td", {}, cs.map((c) => el("div", {}, c.email || pil("ontbreekt", "let")))),
           el("td", {}, cs.map((c) => el("div", {}, c.telefoon || pil("ontbreekt", "let")))),
-          el("td", {}, pil(b.status, b.status === "lid" ? "goed" : b.status === "opgezegd" ? "fout" : ""))));
+          el("td", {}, pil(b.status, b.status === "lid" ? "goed" : b.status === "opgezegd" ? "fout" : ""), b.telt_niet_mee ? [" ", pil("telt niet mee")] : null)));
       }
       tbody.replaceChildren(...(rijen.length ? rijen : [el("tr", {}, el("td", { colspan: 5, text: "Niets gevonden." }))]));
       telling.textContent = `${rijen.length} bedrijven`;
@@ -426,12 +426,13 @@
 
     function bewerkBedrijf(b, cs) {
       const isNieuw = !b;
-      b = b ?? { naam: "", adres: "", postcode: "", plaats: "Ter Apel", kvk: "", branche: "", website: "", factuur_email: "", lid_sinds: String(new Date().getFullYear()), status: "lid", notitie: "", toon_in_ledenoverzicht: false };
+      b = b ?? { naam: "", adres: "", postcode: "", plaats: "Ter Apel", kvk: "", branche: "", website: "", factuur_email: "", lid_sinds: String(new Date().getFullYear()), status: "lid", notitie: "", toon_in_ledenoverzicht: false, telt_niet_mee: false };
       cs = cs ?? [];
       const f = Object.fromEntries(["naam", "adres", "postcode", "plaats", "kvk", "branche", "website", "factuur_email", "lid_sinds"].map((k) => [k, tekstInvoer(b[k])]));
       // Opzeggen gaat via de knop hieronder (met datum, penningmeester en Brevo), niet via deze keuzelijst.
       f.status = el("select", { id: id() }, ["lid", ...(b.status === "opgezegd" ? ["opgezegd"] : [])].map((s) => el("option", { value: s, text: s, selected: b.status === s })));
       f.notitie = el("textarea", { id: id() }, b.notitie ?? "");
+      const tellen = el("input", { type: "checkbox", id: id(), checked: !!b.telt_niet_mee });
       const contactRijen = [...cs, ...(isNieuw ? [{ naam: "", email: "", telefoon: "", functie: "", primair: true, actief: true, _nieuw: true }] : [])].map((c) => ({
         c, naam: tekstInvoer(c.naam), email: el("input", { type: "email", id: id(), value: c.email ?? "" }), telefoon: el("input", { type: "tel", id: id(), value: c.telefoon ?? "" }),
         functie: tekstInvoer(c.functie), primair: el("input", { type: "checkbox", id: id(), checked: c.primair }), actief: el("input", { type: "checkbox", id: id(), checked: c.actief }),
@@ -460,6 +461,8 @@
         el("h2", { text: isNieuw ? "Nieuw lid" : b.naam }),
         el("div", { class: "rooster" }, el("div", { class: "breed" }, veld("Bedrijfsnaam", f.naam)), veld("Adres", f.adres), veld("Postcode", f.postcode), veld("Plaats", f.plaats), veld("Status", f.status),
           veld("KvK", f.kvk), veld("Branche", f.branche), veld("Website", f.website), veld("Factuur-e-mail", f.factuur_email), veld("Lid sinds", f.lid_sinds), el("div", { class: "breed" }, veld("Notitie", f.notitie))),
+        el("label", { style: "display:flex;gap:8px;align-items:center;margin-top:8px" }, tellen, "Telt niet mee (intern of proef)"),
+        el("p", { class: "hint", style: "margin:2px 0 0", text: "Geen profielronde, niet in het jaaroverzicht en geen melding aan de penningmeester. Krijgt wel berichten en uitnodigingen." }),
         el("h3", { text: "Contactpersonen", style: "margin-top:16px" }), contactenDiv, extra,
         el("div", { class: "balk" }, knop, el("button", { type: "button", class: "knop tweede", text: "Annuleren", onclick: () => dlg.close() })), uit);
       form.addEventListener("submit", async (e) => {
@@ -468,6 +471,7 @@
         await bezig(knop, async () => {
           const rij = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.value.trim() || null]));
           rij.status = f.status.value;
+          rij.telt_niet_mee = tellen.checked;
           if (!rij.naam) return uit.append(melding("fout", "Bedrijfsnaam is verplicht."));
           if (rij.status === "opgezegd" && b.status !== "opgezegd") rij.opgezegd_op = new Date().toISOString().slice(0, 10);
           const { data: opgeslagen, error } = isNieuw ? await sb.from("bedrijven").insert(rij).select("id").single() : await sb.from("bedrijven").update(rij).eq("id", b.id).select("id").single();
