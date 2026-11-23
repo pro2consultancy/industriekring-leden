@@ -1,0 +1,26 @@
+/* Het profielformulier met voorbeeld (assets/profielformulier.js): profielpagina van het lid en het beheer. */
+.profiel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 28px; align-items: start; }
+.voorbeeld { display: grid; gap: 10px; position: sticky; top: 12px; }
+.teller { font-size: 13px; color: var(--gedempt); justify-self: end; font-variant-numeric: tabular-nums; }
+.fotokeuze { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.fotokeuze input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.fotokeuze input[type=file]:focus-visible + label { outline: 3px solid var(--accent-op-merk); outline-offset: 2px; }
+.groep { border-top: 1px solid var(--lijn); padding-top: 18px; display: grid; gap: 12px; }
+.groep h3, .groep p { margin: 0; }
+form > div > .knop { justify-self: start; }
+/* Voorbeeld van de bedrijfspagina op de website (na "Lees verder"), zoals het thema hem toont. */
+.lidpagina { border: 1px solid var(--lijn); background: var(--grond); display: grid; gap: 10px; padding: 10px; font-size: 13px; }
+.lp-beeld { aspect-ratio: 4 / 3; background: #F6F3EE center / cover no-repeat; display: grid; place-items: center; border-radius: 4px; }
+.lp-beeld.passend { background-color: #fff; background-size: contain; border: 1px solid var(--lijn); }
+.lp-beeld .mono { font-family: var(--kop); font-weight: 700; font-size: 32px; color: var(--merk); }
+.lp-band { background: #145A73; color: #fff; border-radius: 4px; padding: 8px 10px; display: grid; gap: 2px; }
+.lp-band strong { font-family: var(--kop); font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+.lp-band span { color: #9FC7D6; font-size: 12px; }
+.lidpagina h4 { margin: 2px 0 0; font-family: var(--kop); font-size: 15px; color: var(--inkt); }
+.lp-tekst { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--inkt-zacht); max-height: 9.5em; overflow: hidden; }
+.lp-info { border: 1px solid var(--lijn); border-radius: 4px; overflow: hidden; }
+.lp-info > div { padding: 7px 10px; border-top: 1px solid var(--lijn); overflow-wrap: anywhere; color: var(--inkt-zacht); }
+.lp-info .lp-kop { background: #145A73; color: #fff; font-family: var(--kop); font-weight: 600; border-top: 0; }
+.lp-info .leeg { color: var(--gedempt); font-style: italic; }
+.lp-knop { margin: 8px 10px 10px; background: var(--accent); color: #fff; text-align: center; padding: 7px; border-radius: 3px; font-weight: 600; }
+@media (max-width: 760px) { .profiel { grid-template-columns: minmax(0, 1fr); } .voorbeeld { position: static; } }

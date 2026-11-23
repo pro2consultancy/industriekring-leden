@@ -137,7 +137,7 @@
   function route() {
     if (!sessie) return;
     const [deel, sub, extra] = location.hash.replace(/^#/, "").split("/");
-    const actief = `#${deel === "bijeenkomst" || !deel ? "bijeenkomsten" : deel === "bericht" ? "berichten" : deel}`;
+    const actief = `#${deel === "bijeenkomst" || !deel ? "bijeenkomsten" : deel === "bericht" ? "berichten" : deel === "profiel-invullen" ? "profielen" : deel}`;
     for (const a of tabs.querySelectorAll("a")) {
       if (a.getAttribute("href") === actief) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     }
@@ -146,6 +146,7 @@
     if (deel === "leden") return ledenScherm();
     if (deel === "aanvragen") return aanvragenScherm();
     if (deel === "profielen") return profielenScherm(sub);
+    if (deel === "profiel-invullen") return profielNamensScherm(sub);
     if (deel === "instellingen") return instellingenScherm();
     if (deel === "berichten") return berichten.lijstScherm();
     if (deel === "bericht") return berichten.berichtScherm(sub, /^[0-9a-f-]{36}$/.test(extra ?? "") ? extra : null);
@@ -463,6 +464,8 @@
           veld("KvK", f.kvk), veld("Branche", f.branche), veld("Website", f.website), veld("Factuur-e-mail", f.factuur_email), veld("Lid sinds", f.lid_sinds), el("div", { class: "breed" }, veld("Notitie", f.notitie))),
         el("label", { style: "display:flex;gap:8px;align-items:center;margin-top:8px" }, tellen, "Telt niet mee (intern of proef)"),
         el("p", { class: "hint", style: "margin:2px 0 0", text: "Geen profielronde, niet in het jaaroverzicht en geen melding aan de penningmeester. Krijgt wel berichten en uitnodigingen." }),
+        !isNieuw && b.status === "lid" ? el("div", { class: "balk" }, el("button", { type: "button", class: "knop tweede klein", text: "Profiel invullen namens lid",
+          onclick: () => { dlg.close(); location.hash = `profiel-invullen/${b.id}`; } })) : null,
         el("h3", { text: "Contactpersonen", style: "margin-top:16px" }), contactenDiv, extra,
         el("div", { class: "balk" }, knop, el("button", { type: "button", class: "knop tweede", text: "Annuleren", onclick: () => dlg.close() })), uit);
       form.addEventListener("submit", async (e) => {
@@ -563,9 +566,13 @@
   // ------------------------------------------------------------------ profielen
   const PROFIEL_STATUS = {
     leeg: ["Nog niet ingevuld", ""], wacht: ["Wacht op controle", "let"], wijziging: ["Wijziging wacht op controle", "let"],
-    gepubliceerd: ["Gepubliceerd", "goed"], verborgen: ["Verborgen", ""],
+    gepubliceerd: ["Gepubliceerd", "goed"], verborgen: ["Verborgen", ""], concept: ["Concept (beheer)", "let"],
   };
-  const profielStand = (p) => !p || !p.ingediend_op ? "leeg" : p.status === "ingediend" ? "wacht" : p.status === "gepubliceerd" ? (p.voorstel ? "wijziging" : "gepubliceerd") : p.status === "verborgen" ? "verborgen" : "leeg";
+  // concept = door het beheer deels ingevuld; nog niet compleet, dus nog niet nagekeken of gepubliceerd.
+  const profielStand = (p) => !p ? "leeg" : p.status === "ingediend" ? "wacht" : p.status === "gepubliceerd" ? (p.voorstel ? "wijziging" : "gepubliceerd")
+    : p.status === "verborgen" ? "verborgen" : p.beheer_ingevuld_op ? "concept" : "leeg";
+  const doorBeheer = (p) => !!p?.beheer_ingevuld_op && !p.ingediend_op;
+  const wanneerKort = (iso) => new Date(iso).toLocaleString("nl-NL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   // Profielronde: één mail met de profiellink naar alle leden zonder profiel, en één herinnering na 7 dagen.
   // Alleen met twee klikken, en in testmodus alleen naar de testadressen.
@@ -575,6 +582,8 @@
     try { s = await actie({ actie: "profielronde_stand" }); }
     catch (e) { return kaart(el("h2", { text: "Profielronde" }), melding("fout", e.message)); }
     const datum = (d) => new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "long" });
+    // Uitsplitsing: nog leeg (of onvolledig concept) / ingevuld door beheer, ter controle.
+    const groep = (g) => g ? ` (nog leeg: ${g.leeg} · ingevuld door beheer, ter controle: ${g.controle})` : "";
     const verslag = (r) => [`Verstuurd: ${r.verzonden}`, r.test ? `in testmodus tegengehouden: ${r.test}` : "", r.overgeslagen ? `overgeslagen (al bezig of al verstuurd): ${r.overgeslagen}` : "",
       r.fout ? `mislukt: ${r.fout}${r.fouten.length ? ` (${r.fouten.join("; ")})` : ""}` : "", r.resterend ? `nog ${r.resterend} te gaan: klik nogmaals` : ""].filter(Boolean).join(", ") + ".";
     const verstuurKnop = (tekst, soort) => bevestigKnop(tekst, `Zeker? ${s.testmodus ? "Testmodus: alleen testadressen. " : ""}Klik nogmaals`, async () => {
@@ -584,18 +593,19 @@
         profielenScherm();
       } catch (e) { uit.replaceChildren(melding("fout", e.message)); }
     });
-    const proef = el("button", { type: "button", class: "knop tweede klein", text: "Proefmail naar mij (ronde en herinnering)" });
+    const proef = el("button", { type: "button", class: "knop tweede klein", text: "Proefmail naar mij (ronde en herinnering, beide groepen)" });
     proef.addEventListener("click", bezig(proef, async () => {
       try { const r = await actie({ actie: "profielronde_proef" }); uit.replaceChildren(melding(r.fout ? "let" : "goed", `Proefmails naar de testadressen: ${r.verzonden} verstuurd${r.fout ? `, ${r.fout} mislukt` : ""}.`)); }
       catch (e) { uit.replaceChildren(melding("fout", e.message)); }
     }));
     return kaart(el("h2", { text: "Profielronde" }),
-      el("p", { text: "Eén mail met de persoonlijke profiellink naar alle leden die nog geen profiel hebben ingestuurd. Na 7 dagen kan er één herinnering naar wie dan nog niets heeft ingestuurd. Er gaat niets vanzelf: elke verzending start je hier, met twee klikken." }),
+      el("p", { text: "Eén mail met de persoonlijke profiellink naar alle leden die zelf nog geen profiel hebben ingestuurd. Na 7 dagen kan er één herinnering naar wie dan nog niets heeft ingestuurd. Er gaat niets vanzelf: elke verzending start je hier, met twee klikken." }),
+      el("p", { class: "hint", text: "Twee groepen, elk met een eigen mail: nog leeg (ook een concept dat nog niet compleet is) krijgt \u201cvul je profiel in\u201d; een profiel dat het bestuur compleet namens het lid invulde krijgt \u201cwe hebben je profiel alvast ingevuld, wil je het controleren?\u201d." }),
       s.testmodus ? melding("let", "De testmodus staat aan: alleen de testadressen krijgen een mail. Voor de leden telt het nog niet als verstuurd.") : null,
       el("table", { class: "tabel", style: "margin:8px 0" }, el("tbody", {},
-        el("tr", {}, el("th", { scope: "row", text: "Leden zonder profiel" }), el("td", { text: String(s.zonder_profiel) })),
-        el("tr", {}, el("th", { scope: "row", text: "Profiellink nog te sturen" }), el("td", { text: String(s.ronde_te_sturen) })),
-        el("tr", {}, el("th", { scope: "row", text: "Profiellink gestuurd" }), el("td", { text: String(s.ronde_verstuurd) })),
+        el("tr", {}, el("th", { scope: "row", text: "Nog geen profiel van het lid" }), el("td", { text: `${s.zonder_profiel}${groep(s.groepen?.zonder_profiel)}` })),
+        el("tr", {}, el("th", { scope: "row", text: "Profiellink nog te sturen" }), el("td", { text: `${s.ronde_te_sturen}${groep(s.groepen?.ronde_te_sturen)}` })),
+        el("tr", {}, el("th", { scope: "row", text: "Profiellink gestuurd" }), el("td", { text: `${s.ronde_verstuurd}${groep(s.groepen?.ronde_verstuurd)}` })),
         el("tr", {}, el("th", { scope: "row", text: "Herinnering" }), el("td", { text: s.herinnering_te_sturen ? `${s.herinnering_te_sturen} klaar om te sturen` : s.herinnering_wacht ? `${s.herinnering_wacht} wachten tot ${datum(s.herinnering_vanaf)}` : s.herinnerd ? `${s.herinnerd} verstuurd` : "—" })))),
       s.zonder_adres.length ? melding("let", `Zonder e-mailadres (krijgen niets; vul een adres in bij Leden): ${s.zonder_adres.join(", ")}.`) : null,
       el("div", { class: "balk" }, proef,
@@ -612,7 +622,7 @@
     ]);
     const perBedrijf = new Map((profielen ?? []).map((p) => [p.bedrijf_id, p]));
     const uit = el("div", { "aria-live": "polite" }, neem("profielen"));
-    const filter = el("select", { id: id() }, [["wacht", "Wacht op controle"], ["gepubliceerd", "Gepubliceerd"], ["verborgen", "Verborgen"], ["leeg", "Nog niet ingevuld"], ["alle", "Alles"]]
+    const filter = el("select", { id: id() }, [["wacht", "Wacht op controle"], ["gepubliceerd", "Gepubliceerd"], ["verborgen", "Verborgen"], ["concept", "Concept (beheer)"], ["leeg", "Nog niet ingevuld"], ["alle", "Alles"]]
       .map(([v, t]) => el("option", { value: v, text: t, selected: v === (sessionStorage.getItem("profielfilter") || "wacht") })));
     const tbody = el("tbody");
     const telling = el("span", { class: "hint" });
@@ -628,7 +638,8 @@
         const p = perBedrijf.get(b.id), st = profielStand(p);
         return el("tr", { class: `klik${b.id === gekozen ? " gekozen" : ""}`, onclick: () => (location.hash = `profielen/${b.id}`) },
           el("td", {}, el("strong", { text: b.naam }),
-            el("div", { class: "hint", text: p?.uitgenodigd_op ? `Link gestuurd ${new Date(p.uitgenodigd_op).toLocaleDateString("nl-NL")}` : "Nog geen link gestuurd" })),
+            el("div", { class: "hint", text: [p?.uitgenodigd_op ? `Link gestuurd ${new Date(p.uitgenodigd_op).toLocaleDateString("nl-NL")}` : "Nog geen link gestuurd",
+              doorBeheer(p) && st !== "concept" ? "ingevuld door beheer, ter controle" : ""].filter(Boolean).join(" · ") })),
           el("td", {}, pil(...PROFIEL_STATUS[st])));
       }) : [el("tr", {}, el("td", { colspan: 2, text: filter.value === "wacht" ? "Er wacht niets op controle." : "Geen bedrijven in deze lijst." }))]));
       telling.textContent = `${rijen.length} van ${(bedrijven ?? []).length} bedrijven`;
@@ -647,7 +658,10 @@
       const melden = (soort, tekst) => { bewaar("profielen", soort, tekst); profielenScherm(b.id); };
 
       if (st === "leeg") delen.push(el("p", { text: "Dit bedrijf heeft nog geen profiel ingestuurd." }));
-      else {
+      else if (st === "concept") {
+        delen.push(melding("let", `Concept, ingevuld door beheer. Nog leeg: ${ik.profielOntbreekt(ingevuld).join(", ")}. Het lid ziet in zijn formulier wat al is ingevuld; bij de profielronde telt het als nog leeg.`),
+          el("div", { class: "kaarten" }, el("div", { style: "display:grid;gap:6px" }, el("span", { class: "label", text: "Concept" }), await kaartVan(ingevuld))));
+      } else {
         if (!b.toon_in_ledenoverzicht) delen.push(melding("let", "Het bedrijf heeft aangegeven niet op de website te willen staan. Publiceren kan daarom niet."));
         const wacht = st === "wacht" || st === "wijziging";
         const kaarten = el("div", { class: "kaarten" });
@@ -660,7 +674,7 @@
             ["Medewerkers", ingevuld.medewerkers || "—"], ["Bestaat sinds", ingevuld.bestaat_sinds ? String(ingevuld.bestaat_sinds) : "—"], ["Werkgebied", ingevuld.werkgebied || "—"],
             ["Contactpersoon op de site", ingevuld.toon_contactpersoon ? contact?.naam || "ja" : "nee"],
             ["Foto of logo", ingevuld.foto_pad ? `${ingevuld.foto_weergave === "vullend" ? "vult het vak" : "hele afbeelding"}${ingevuld.foto_toestemming ? ", gebruik bevestigd" : ""}` : "geen"],
-            ["Ingestuurd", p.ingediend_op ? new Date(p.ingediend_op).toLocaleString("nl-NL") : "—"],
+            ["Ingestuurd door het lid", p.ingediend_op ? new Date(p.ingediend_op).toLocaleString("nl-NL") : "—"],
             ["Op de website", !p.wp_post_id ? "nee" : p.wp_status === "publish" ? `ja (bericht ${p.wp_post_id}${p.wp_gesynct_op ? `, bijgewerkt ${new Date(p.wp_gesynct_op).toLocaleString("nl-NL")}` : ""})` : `als concept, niet zichtbaar (bericht ${p.wp_post_id})`]]
             .flatMap(([k, v]) => [el("dt", { class: "hint", text: k }), el("dd", { style: "margin:0 0 6px;white-space:pre-wrap;overflow-wrap:anywhere", text: v })])));
         const knoppen = el("div", { class: "balk" });
@@ -698,6 +712,10 @@
           : "Publiceren betekent nu: goedgekeurd door het bestuur. De website-koppeling staat uit (Instellingen); tot die aan staat, plaatst de webbeheerder de kaart." }));
       }
 
+      // Ingevuld door beheer: wie en wanneer; en de knop om (verder) in te vullen namens het lid.
+      if (p?.beheer_ingevuld_op) delen.push(el("p", { class: "hint", style: "margin:8px 0 0", text: `Ingevuld door beheer: ${p.beheer_ingevuld_door || "onbekend"}, ${wanneerKort(p.beheer_ingevuld_op)}.${doorBeheer(p) && st !== "concept" ? " Het lid heeft het nog niet zelf ingestuurd." : ""}` }));
+      delen.push(el("div", { class: "balk" }, el("a", { class: "knop tweede klein", href: `#profiel-invullen/${b.id}`, text: "Profiel invullen namens lid" })));
+
       // Profiellink sturen of kopiëren
       const metAdres = cs.filter((c) => c.actief && c.email);
       const naar = el("select", { id: id() }, metAdres.map((c) => el("option", { value: c.id, text: `${c.naam || "(geen naam)"} · ${c.email}`, selected: c.id === p?.contactpersoon_id })));
@@ -730,6 +748,40 @@
           el("div", { class: "scroll" }, el("table", { class: "tabel" }, el("thead", {}, el("tr", {}, el("th", { text: "Bedrijf" }), el("th", { text: "Profiel" }))), tbody))),
         paneel));
     if (b && window.innerWidth < 860) paneel.scrollIntoView({ block: "start" });
+  }
+
+  // ------------------------------------------------------------------ profiel invullen namens het lid
+  // Hetzelfde formulier als de profielpagina van het lid (assets/profielformulier.js), in de modus "beheer".
+  async function profielNamensScherm(bid) {
+    const terug = el("p", { style: "margin:0" }, el("a", { href: bid ? `#profielen/${bid}` : "#profielen", text: "← Terug naar het profiel" }));
+    let d;
+    try { d = await actie({ actie: "profiel_namens_laden", bedrijf_id: bid }); }
+    catch (e) { return inhoud.replaceChildren(kaart(terug, el("h1", { text: "Profiel invullen namens lid" }), melding("fout", e.message))); }
+    const lidStuurde = !!(d.lid.ingediend_op || d.lid.wijziging_wacht);
+    const delen = [
+      terug,
+      el("h1", { text: `Profiel invullen namens ${d.bedrijf.naam}` }),
+      el("p", { text: "Voor gegevens die het bedrijf al aan het bestuur gaf. Zelfde velden en controles als het formulier van het lid. Ontbreken er verplichte velden, dan blijft het een concept: het lid ziet wat al is ingevuld en krijgt bij de profielronde de gewone mail. Is alles ingevuld, dan geldt het als nagekeken door het bestuur, en krijgt het lid bij de profielronde de vraag het te controleren." }),
+      d.beheer ? el("p", { class: "hint", text: `Eerder ingevuld door beheer: ${d.beheer.door || "onbekend"}, ${wanneerKort(d.beheer.op)}.` }) : null,
+      lidStuurde ? melding("fout", `Let op: het lid heeft zelf al een profiel ingestuurd${d.lid.ingediend_op ? ` (${wanneerKort(d.lid.ingediend_op)})` : ""}${d.lid.wijziging_wacht ? ", en er wacht nog een wijziging van het lid" : ""}. Opslaan overschrijft dat; je moet het bevestigen met een tweede klik.`) : null,
+      d.status === "gepubliceerd" || d.status === "verborgen" ? melding("let", "Dit profiel is al nagekeken. Een onvolledige versie kan niet worden opgeslagen: vul alle verplichte velden in.") : null,
+      melding("let", d.wp_sync_aan ? "Website bijhouden staat aan: een compleet profiel met toestemming komt na opslaan op de pagina Leden." : "Website bijhouden staat uit: er verandert niets op de website."),
+    ];
+    const formulier = ik.profielFormulier(d, {
+      modus: "beheer",
+      bevestigVraag: lidStuurde ? "Zeker? Het profiel van het lid wordt overschreven" : null,
+      foto: (data) => actie({ actie: "profiel_namens_foto", bedrijf_id: bid, foto: data }),
+      opslaan: (body) => actie({ actie: "profiel_namens_opslaan", bedrijf_id: bid, bijgewerkt_op: d.bijgewerkt_op, ...body }),
+      klaar: (r) => {
+        bewaar("profielen", r.compleet ? (r.website?.fout ? "let" : "goed") : "let", !r.compleet
+          ? `Opgeslagen als concept. Nog leeg: ${r.ontbreekt.join(", ")}.`
+          : r.status === "gepubliceerd"
+          ? `Opgeslagen en nagekeken: het profiel van ${d.bedrijf.naam} is gepubliceerd.${d.wp_sync_aan ? (r.website?.fout ? " De website bijwerken lukte nog niet; de nachtelijke taak probeert het opnieuw." : " De kaart staat op de website.") : " Website bijhouden staat uit, dus op de website verandert niets."}`
+          : `Opgeslagen en nagekeken. Het staat niet op de website: het bedrijf heeft daar (nog) geen toestemming voor gegeven.`);
+        location.hash = `profielen/${bid}`;
+      },
+    });
+    inhoud.replaceChildren(kaart(...delen.filter(Boolean)), el("div", { style: "margin-top:16px" }, formulier));
   }
 
   // ------------------------------------------------------------------ instellingen

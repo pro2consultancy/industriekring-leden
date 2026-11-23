@@ -9,36 +9,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
 <link rel="stylesheet" href="../assets/stijl.css">
+<link rel="stylesheet" href="../assets/profielformulier.css">
 <link rel="icon" href="../assets/favicon.png">
 <style>
   main { max-width: 1040px; }
   .kop .binnen { max-width: 1040px; }
   #inhoud > * + * { margin-top: 16px; }
-  .profiel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 28px; align-items: start; }
-  .voorbeeld { display: grid; gap: 10px; position: sticky; top: 12px; }
-  .teller { font-size: 13px; color: var(--gedempt); justify-self: end; font-variant-numeric: tabular-nums; }
-  .fotokeuze { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-  .fotokeuze input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
-  .fotokeuze input[type=file]:focus-visible + label { outline: 3px solid var(--accent-op-merk); outline-offset: 2px; }
-  .groep { border-top: 1px solid var(--lijn); padding-top: 18px; display: grid; gap: 12px; }
-  .groep h3, .groep p { margin: 0; }
-  form > div > .knop { justify-self: start; }
-  /* Voorbeeld van de bedrijfspagina op de website (na "Lees verder"), zoals het thema hem toont. */
-  .lidpagina { border: 1px solid var(--lijn); background: var(--grond); display: grid; gap: 10px; padding: 10px; font-size: 13px; }
-  .lp-beeld { aspect-ratio: 4 / 3; background: #F6F3EE center / cover no-repeat; display: grid; place-items: center; border-radius: 4px; }
-  .lp-beeld.passend { background-color: #fff; background-size: contain; border: 1px solid var(--lijn); }
-  .lp-beeld .mono { font-family: var(--kop); font-weight: 700; font-size: 32px; color: var(--merk); }
-  .lp-band { background: #145A73; color: #fff; border-radius: 4px; padding: 8px 10px; display: grid; gap: 2px; }
-  .lp-band strong { font-family: var(--kop); font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
-  .lp-band span { color: #9FC7D6; font-size: 12px; }
-  .lidpagina h4 { margin: 2px 0 0; font-family: var(--kop); font-size: 15px; color: var(--inkt); }
-  .lp-tekst { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--inkt-zacht); max-height: 9.5em; overflow: hidden; }
-  .lp-info { border: 1px solid var(--lijn); border-radius: 4px; overflow: hidden; }
-  .lp-info > div { padding: 7px 10px; border-top: 1px solid var(--lijn); overflow-wrap: anywhere; color: var(--inkt-zacht); }
-  .lp-info .lp-kop { background: #145A73; color: #fff; font-family: var(--kop); font-weight: 600; border-top: 0; }
-  .lp-info .leeg { color: var(--gedempt); font-style: italic; }
-  .lp-knop { margin: 8px 10px 10px; background: var(--accent); color: #fff; text-align: center; padding: 7px; border-radius: 3px; font-weight: 600; }
-  @media (max-width: 760px) { .profiel { grid-template-columns: minmax(0, 1fr); } .voorbeeld { position: static; } }
 </style>
 </head>
 <body>
@@ -54,40 +30,13 @@
 
 <script src="../assets/config.js"></script>
 <script src="../assets/gedeeld.js"></script>
+<script src="../assets/profielformulier.js"></script>
 <script>
 (() => {
-  const { el, functie, lidkaart } = window.ik;
+  const { el, functie } = window.ik;
   const main = document.getElementById("inhoud");
   const token = new URLSearchParams(location.search).get("t") || "";
   const melding = (soort, tekst) => el("div", { class: `melding ${soort}`, role: soort === "fout" ? "alert" : "status" }, tekst);
-  const veld = (label, invoer, ...extra) => el("div", { class: "veld" }, el("label", { for: invoer.id, text: label }), invoer, ...extra);
-
-  // Afbeelding in de browser verkleinen en opnieuw opslaan als JPEG: kleiner bestand, en locatie- en
-  // andere gegevens uit de camera gaan er zo vanzelf uit.
-  function verklein(bestand) {
-    return new Promise((klaar, mis) => {
-      const lezer = new FileReader();
-      lezer.onerror = () => mis(new Error("Deze afbeelding kon niet worden gelezen. Probeer een ander bestand."));
-      lezer.onload = () => {
-        const img = new Image();
-        img.onerror = () => mis(new Error("Deze afbeelding kon niet worden gelezen. Probeer een ander bestand."));
-        img.onload = () => {
-          const schaal = Math.min(1, 1200 / Math.max(img.width, img.height));
-          const c = document.createElement("canvas");
-          c.width = Math.max(1, Math.round(img.width * schaal)); c.height = Math.max(1, Math.round(img.height * schaal));
-          const ctx = c.getContext("2d");
-          ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
-          // Lichte hoeken wijzen op een logo: dan de hele afbeelding tonen. Anders is het een foto die het vak vult.
-          const licht = (x, y) => { const p = ctx.getImageData(x, y, 1, 1).data; return p[0] > 232 && p[1] > 232 && p[2] > 232; };
-          const hoeken = [[1, 1], [c.width - 2, 1], [1, c.height - 2], [c.width - 2, c.height - 2]];
-          klaar({ data: c.toDataURL("image/jpeg", 0.85), pas: hoeken.every(([x, y]) => licht(Math.max(0, x), Math.max(0, y))) ? "passend" : "vullend" });
-        };
-        img.src = lezer.result;
-      };
-      lezer.readAsDataURL(bestand);
-    });
-  }
-
   function afsluitscherm(d, opSite) {
     const delen = [
       melding("goed", opSite && d.profiel?.op_website
@@ -109,127 +58,14 @@
     window.scrollTo(0, 0);
   }
 
+  // Het formulier zelf staat in ../assets/profielformulier.js; het beheer gebruikt hetzelfde (namens het lid).
   function formulier(d) {
-    const p = d.profiel;
-    const s = { foto: p.foto_url, fotoPad: p.foto_pad, pas: p.foto_weergave || "passend" };
-    const branche = el("select", { id: "branche", required: true },
-      el("option", { value: "", text: "Kies…" }), d.branches.map((b) => el("option", { value: b, text: b, selected: b === p.branche })));
-    const kort = el("textarea", { id: "kort", maxlength: "300", required: true }, p.kort ?? "");
-    const teller = el("span", { class: "teller", "aria-live": "off" });
-    const lang = el("textarea", { id: "lang", maxlength: "1500", style: "min-height:130px" }, p.lang ?? "");
-    const site = el("input", { id: "site", type: "url", maxlength: "200", value: p.website ?? "", autocomplete: "url", placeholder: "www.jouwbedrijf.nl" });
-    const keuze = (id, lijst, waarde) => el("select", { id }, el("option", { value: "", text: "Niet tonen" }), (lijst ?? []).map((x) => el("option", { value: x, text: x, selected: x === waarde })));
-    const medewerkers = keuze("medewerkers", d.medewerkers_keuzes, p.medewerkers);
-    const werkgebied = keuze("werkgebied", d.werkgebied_keuzes, p.werkgebied);
-    const sinds = el("input", { id: "sinds", type: "number", inputmode: "numeric", min: "1800", max: String(new Date().getFullYear()), step: "1", value: p.bestaat_sinds ?? "", placeholder: "bijv. 1998" });
-    const bestand = el("input", { id: "foto", type: "file", accept: "image/jpeg,image/png,image/webp" });
-    const fotoHint = el("span", { class: "hint", id: "foto-hint" });
-    const toestemming = el("input", { type: "checkbox", id: "toestemming", checked: !!p.foto_toestemming });
-    const toestemmingRij = el("label", { class: "vink", for: "toestemming" }, toestemming, el("span", { text: "Ik mag dit logo (of deze foto) gebruiken op de website van de kring." }));
-    const pasKnop = (waarde, tekst) => el("button", { type: "button", class: "knop tweede klein", "data-pas": waarde, text: tekst, onclick: () => { s.pas = waarde; teken(); } });
-    const pasKeuze = el("div", { class: "fotokeuze" }, pasKnop("passend", "Hele afbeelding tonen"), pasKnop("vullend", "Vak vullen"),
-      el("button", { type: "button", class: "knop stil klein", text: "Logo weghalen", onclick: () => { s.foto = null; s.fotoPad = null; bestand.value = ""; teken(); } }),
-      el("span", { class: "hint", text: "Een logo staat het best in zijn geheel; een foto mag het vak vullen." }));
-    const opSite = el("input", { type: "checkbox", id: "opsite", checked: d.op_website_toegestaan !== false });
-    const metNaam = el("input", { type: "checkbox", id: "metnaam", checked: !!p.toon_contactpersoon });
-    const c = d.contact;
-    const cNaam = c ? el("input", { id: "c-naam", type: "text", maxlength: "120", value: c.naam ?? "", autocomplete: "name" }) : null;
-    const cMail = c ? el("input", { id: "c-mail", type: "email", maxlength: "200", value: c.email ?? "", autocomplete: "email" }) : null;
-    const cTel = c ? el("input", { id: "c-tel", type: "tel", maxlength: "30", value: c.telefoon ?? "", autocomplete: "tel" }) : null;
-    const knop = el("button", { type: "submit", class: "knop", text: "Profiel insturen" });
-    const uit = el("div", { "aria-live": "polite" });
-    const voorbeeld = el("div");
-    const pagina = el("div");
-
-    function teken() {
-      teller.textContent = `${kort.value.length} / 300`;
-      fotoHint.textContent = s.foto ? "" : "Nog geen logo; de kaart toont je initialen. Geen logo bij de hand? Een foto van je bedrijf kan ook.";
-      pasKeuze.hidden = !s.foto; toestemmingRij.hidden = !s.foto;
-      for (const b of pasKeuze.querySelectorAll("[data-pas]")) b.setAttribute("aria-pressed", String(b.dataset.pas === s.pas));
-      voorbeeld.replaceChildren(lidkaart({ naam: d.bedrijf.naam, branche: branche.value || "Type bedrijf", kort: kort.value.trim(), foto: s.foto, pas: s.pas }));
-      // De bedrijfspagina: alleen ingevulde regels; zo staan ze straks ook op de site.
-      const beeld = el("div", { class: `lp-beeld${s.foto && s.pas !== "vullend" ? " passend" : ""}` }, s.foto ? null : el("span", { class: "mono", "aria-hidden": "true", text: window.ik.initialen(d.bedrijf.naam) }));
-      if (s.foto) beeld.style.backgroundImage = `url(${JSON.stringify(String(s.foto))})`;
-      const jaar = /^\d{4}$/.test(sinds.value.trim()) ? sinds.value.trim() : "";
-      const regels = [["Locatie", d.locatie], ["Medewerkers", medewerkers.value], ["Bestaat sinds", jaar], ["Werkgebied", werkgebied.value]].filter(([, w]) => w);
-      pagina.replaceChildren(el("div", { class: "lidpagina" }, beeld,
-        el("div", { class: "lp-band" }, el("strong", { text: d.bedrijf.naam }), el("span", { text: branche.value || "Type bedrijf" })),
-        el("h4", { text: "Over het bedrijf" }),
-        el("p", { class: "lp-tekst", text: lang.value.trim() || kort.value.trim() || "Hier komt de tekst bij “Meer over je bedrijf”." }),
-        el("div", { class: "lp-info" }, el("div", { class: "lp-kop", text: "Bedrijfsinformatie" }),
-          regels.length ? regels.map(([k, w]) => el("div", { text: `${k}: ${w}` })) : el("div", { class: "leeg", text: "Nog geen bedrijfsinformatie ingevuld." }),
-          site.value.trim() ? el("div", { class: "lp-knop", text: "Contact opnemen →" }) : null)));
-    }
-    for (const x of [branche, kort, lang, sinds, site]) x.addEventListener("input", teken);
-    for (const x of [branche, medewerkers, werkgebied]) x.addEventListener("change", teken);
-
-    bestand.addEventListener("change", async () => {
-      const f = bestand.files?.[0];
-      if (!f) return;
-      if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { fotoHint.textContent = "Kies een JPG-, PNG- of WebP-bestand."; return; }
-      if (f.size > 12 * 1024 * 1024) { fotoHint.textContent = "Dit bestand is te groot. Kies een afbeelding tot 12 MB."; return; }
-      fotoHint.textContent = "Bezig met laden…";
-      try {
-        const v = await verklein(f);
-        const r = await functie("profiel", { method: "POST", body: { t: token, actie: "foto", foto: v.data } });
-        s.foto = v.data; s.fotoPad = r.foto_pad; s.pas = v.pas;
-        teken();
-        fotoHint.textContent = `${f.name} is geladen.`;
-      } catch (err) { fotoHint.textContent = err.message; }
+    return window.ik.profielFormulier(d, {
+      modus: "lid",
+      foto: (data) => functie("profiel", { method: "POST", body: { t: token, actie: "foto", foto: data } }),
+      opslaan: (body) => functie("profiel", { method: "POST", body: { t: token, actie: "opslaan", ...body } }),
+      klaar: (_r, body) => afsluitscherm(d, body.op_website),
     });
-
-    const form = el("form", { class: "kaart", novalidate: true },
-      el("div", { class: "veld" }, el("span", { class: "groeplabel", text: "Logo" }),
-        el("div", { class: "fotokeuze" }, bestand, el("label", { for: "foto", class: "knop tweede klein", text: "Kies je logo" }), fotoHint),
-        pasKeuze, toestemmingRij),
-      veld("Type bedrijf", branche),
-      veld("Korte tekst voor de kaart", kort, teller),
-      veld("Meer over je bedrijf", lang, el("span", { class: "hint", text: "Komt achter “Lees verder”." })),
-      veld("Website", site),
-      el("div", { class: "groep" }, el("h3", { text: "Bedrijfsinformatie op de website" }),
-        el("p", { class: "hint", text: d.locatie ? `Locatie: ${d.locatie}. Dit adres komt uit de ledenadministratie; klopt het niet, laat het het bestuur weten.` : "Er staat nog geen adres in de ledenadministratie; laat het bestuur weten welk adres op de kaart mag." }),
-        el("div", { class: "twee" }, veld("Medewerkers", medewerkers), veld("Bestaat sinds", sinds)),
-        veld("Werkgebied", werkgebied)),
-      c ? el("div", { class: "groep" }, el("h3", { text: "Kloppen je gegevens nog?" }),
-        el("div", { class: "twee" }, veld("Contactpersoon", cNaam), veld("E-mailadres", cMail)),
-        veld("Mobiel nummer", cTel, el("span", { class: "hint", text: "Voor de WhatsApp-berichten van de kring." }))) : null,
-      el("label", { class: "vink", for: "opsite" }, opSite, el("span", { text: "Ons bedrijf mag op de website van de kring staan." })),
-      el("label", { class: "vink", for: "metnaam" }, metNaam, el("span", { text: "Mijn naam mag erbij als contactpersoon." })),
-      el("div", {}, knop), uit);
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      uit.replaceChildren();
-      for (const x of form.querySelectorAll(".ongeldig")) x.classList.remove("ongeldig");
-      const fout = (invoer, tekst) => { if (invoer) { invoer.classList.add("ongeldig"); invoer.focus(); } uit.replaceChildren(melding("fout", tekst)); };
-      if (!branche.value) return fout(branche, "Kies een type bedrijf.");
-      if (!kort.value.trim()) return fout(kort, "Schrijf een korte tekst voor de kaart.");
-      if (s.foto && !toestemming.checked) return fout(toestemming, "Bevestig dat je deze afbeelding op de website mag gebruiken.");
-      const jaar = sinds.value.trim();
-      if (jaar && !(/^\d{4}$/.test(jaar) && +jaar >= 1800 && +jaar <= new Date().getFullYear())) return fout(sinds, "Vul bij 'Bestaat sinds' een jaartal in, bijvoorbeeld 1998.");
-      if (c && !cNaam.value.trim()) return fout(cNaam, "Vul de naam van de contactpersoon in.");
-      if (c && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(cMail.value.trim())) return fout(cMail, "Vul een e-mailadres in, bijvoorbeeld naam@bedrijf.nl.");
-      knop.disabled = true; knop.textContent = "Bezig…";
-      try {
-        await functie("profiel", { method: "POST", body: {
-          t: token, actie: "opslaan", branche: branche.value, kort: kort.value, lang: lang.value, website: site.value,
-          foto_pad: s.fotoPad ?? null, foto_weergave: s.pas, foto_toestemming: toestemming.checked,
-          toon_contactpersoon: metNaam.checked, op_website: opSite.checked,
-          medewerkers: medewerkers.value || null, werkgebied: werkgebied.value || null, bestaat_sinds: sinds.value.trim() ? Number(sinds.value) : null,
-          contact: c ? { naam: cNaam.value, email: cMail.value, telefoon: cTel.value } : undefined,
-        } });
-        afsluitscherm(d, opSite.checked);
-      } catch (err) {
-        uit.replaceChildren(melding("fout", err.message));
-        knop.disabled = false; knop.textContent = "Profiel insturen";
-      }
-    });
-
-    teken();
-    return el("div", { class: "profiel" }, form,
-      el("aside", { class: "voorbeeld", "aria-label": "Voorbeeld van je kaart en je bedrijfspagina" }, el("span", { class: "label", text: "Zo kom je op de website" }), voorbeeld,
-        el("span", { class: "label", text: "Na “Lees verder”: je bedrijfspagina", style: "margin-top:8px" }), pagina,
-        el("span", { class: "hint", text: "Het bestuur kijkt het profiel na voordat het zichtbaar wordt." })));
   }
 
   async function start() {
@@ -246,6 +82,9 @@
       delen.push(el("div", {},
         el("h1", { text: "Je bedrijfsprofiel" }),
         el("p", { text: `Vul de kaart van ${d.bedrijf.naam} in voor de pagina Onze leden van de website. Rechts zie je meteen hoe hij eruitziet.` })));
+      if (p.door_beheer_ingevuld && !p.wacht_op_controle) delen.push(melding("let", p.compleet
+        ? "Het bestuur heeft je profiel alvast ingevuld met de gegevens die we van jullie kregen. Kijk of het klopt. Klopt alles, dan hoef je niets te doen; pas je iets aan, dan kijkt het bestuur de wijziging na."
+        : "Het bestuur heeft je profiel al voor een deel ingevuld met de gegevens die we van jullie kregen. Vul de rest aan en stuur het in."));
       if (p.wacht_op_controle) delen.push(melding("let", p.op_website ? "Je wijziging wacht op controle door het bestuur. Tot die tijd staat de vorige versie op de website." : "Je profiel is ingestuurd en wacht op controle door het bestuur. Je kunt het hieronder nog aanpassen."));
       else if (p.op_website) delen.push(melding("goed", "Je profiel staat op de website. Een wijziging gaat eerst langs het bestuur."));
       delen.push(formulier(d));
