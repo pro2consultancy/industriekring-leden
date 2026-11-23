@@ -662,7 +662,7 @@
         delen.push(melding("let", `Concept, ingevuld door beheer. Nog leeg: ${ik.profielOntbreekt(ingevuld).join(", ")}. Het lid ziet in zijn formulier wat al is ingevuld; bij de profielronde telt het als nog leeg.`),
           el("div", { class: "kaarten" }, el("div", { style: "display:grid;gap:6px" }, el("span", { class: "label", text: "Concept" }), await kaartVan(ingevuld))));
       } else {
-        if (!b.toon_in_ledenoverzicht) delen.push(melding("let", "Het bedrijf heeft aangegeven niet op de website te willen staan. Publiceren kan daarom niet."));
+        if (!b.toon_in_ledenoverzicht) delen.push(melding("let", "Er is geen toestemming voor de website (het bedrijf wil er niet op, of het is nog niet vastgelegd). Publiceren kan daarom niet."));
         const wacht = st === "wacht" || st === "wijziging";
         const kaarten = el("div", { class: "kaarten" });
         if (st === "wijziging" || st === "gepubliceerd") kaarten.append(el("div", { style: "display:grid;gap:6px" }, el("span", { class: "label", text: "Nu gepubliceerd" }), await kaartVan(p)));
@@ -673,7 +673,7 @@
           ...[["Meer over het bedrijf", ingevuld.lang || "—"], ["Website", ingevuld.website || "—"],
             ["Medewerkers", ingevuld.medewerkers || "—"], ["Bestaat sinds", ingevuld.bestaat_sinds ? String(ingevuld.bestaat_sinds) : "—"], ["Werkgebied", ingevuld.werkgebied || "—"],
             ["Contactpersoon op de site", ingevuld.toon_contactpersoon ? contact?.naam || "ja" : "nee"],
-            ["Foto of logo", ingevuld.foto_pad ? `${ingevuld.foto_weergave === "vullend" ? "vult het vak" : "hele afbeelding"}${ingevuld.foto_toestemming ? ", gebruik bevestigd" : ""}` : "geen"],
+            ["Foto of logo", ingevuld.foto_pad ? `${ingevuld.foto_weergave === "vullend" ? "vult het vak" : "hele afbeelding"}${ingevuld.foto_toestemming ? ", toestemming voor het logo gegeven" : ", nog geen toestemming voor het logo"}` : "geen"],
             ["Ingestuurd door het lid", p.ingediend_op ? new Date(p.ingediend_op).toLocaleString("nl-NL") : "—"],
             ["Op de website", !p.wp_post_id ? "nee" : p.wp_status === "publish" ? `ja (bericht ${p.wp_post_id}${p.wp_gesynct_op ? `, bijgewerkt ${new Date(p.wp_gesynct_op).toLocaleString("nl-NL")}` : ""})` : `als concept, niet zichtbaar (bericht ${p.wp_post_id})`]]
             .flatMap(([k, v]) => [el("dt", { class: "hint", text: k }), el("dd", { style: "margin:0 0 6px;white-space:pre-wrap;overflow-wrap:anywhere", text: v })])));
@@ -765,7 +765,7 @@
       d.beheer ? el("p", { class: "hint", text: `Eerder ingevuld door beheer: ${d.beheer.door || "onbekend"}, ${wanneerKort(d.beheer.op)}.` }) : null,
       lidStuurde ? melding("fout", `Let op: het lid heeft zelf al een profiel ingestuurd${d.lid.ingediend_op ? ` (${wanneerKort(d.lid.ingediend_op)})` : ""}${d.lid.wijziging_wacht ? ", en er wacht nog een wijziging van het lid" : ""}. Opslaan overschrijft dat; je moet het bevestigen met een tweede klik.`) : null,
       d.status === "gepubliceerd" || d.status === "verborgen" ? melding("let", "Dit profiel is al nagekeken. Een onvolledige versie kan niet worden opgeslagen: vul alle verplichte velden in.") : null,
-      melding("let", d.wp_sync_aan ? "Website bijhouden staat aan: een compleet profiel met toestemming komt na opslaan op de pagina Leden." : "Website bijhouden staat uit: er verandert niets op de website."),
+      melding("let", d.wp_sync_aan ? "Website bijhouden staat aan: een compleet profiel met toestemming voor de website komt na opslaan op de pagina Leden." : "Website bijhouden staat uit: er verandert niets op de website."),
     ];
     const formulier = ik.profielFormulier(d, {
       modus: "beheer",
@@ -777,7 +777,7 @@
           ? `Opgeslagen als concept. Nog leeg: ${r.ontbreekt.join(", ")}.`
           : r.status === "gepubliceerd"
           ? `Opgeslagen en nagekeken: het profiel van ${d.bedrijf.naam} is gepubliceerd.${d.wp_sync_aan ? (r.website?.fout ? " De website bijwerken lukte nog niet; de nachtelijke taak probeert het opnieuw." : " De kaart staat op de website.") : " Website bijhouden staat uit, dus op de website verandert niets."}`
-          : `Opgeslagen en nagekeken. Het staat niet op de website: het bedrijf heeft daar (nog) geen toestemming voor gegeven.`);
+          : `Opgeslagen en nagekeken. Het staat niet op de website: er is (nog) geen toestemming voor de website.`);
         location.hash = `profielen/${bid}`;
       },
     });
@@ -955,7 +955,7 @@
     };
     const namen = (l, n) => l?.length ? ` (${l.join(", ")}${n > l.length ? ", …" : ""})` : "";
     return kaart(el("h2", { text: "Website: de pagina Leden" }),
-      el("p", { text: "Een gepubliceerd profiel komt als kaart op de pagina Leden van industriekringterapel.nl. Verbergen, opzeggen of een ingetrokken toestemming zet de kaart op concept; er wordt niets weggegooid. De koppeling wijzigt alleen kaarten die hij zelf heeft gemaakt." }),
+      el("p", { text: "Een gepubliceerd profiel komt als kaart op de pagina Leden van industriekringterapel.nl. Verbergen, opzeggen of een ingetrokken toestemming voor de website zet de kaart op concept; er wordt niets weggegooid. De koppeling wijzigt alleen kaarten die hij zelf heeft gemaakt." }),
       el("table", { class: "tabel", style: "margin:8px 0" }, el("tbody", {},
         el("tr", {}, el("th", { scope: "row", text: "Inloggegevens" }), el("td", {}, status?.wp_gekoppeld ? pil("ingesteld", "goed") : pil("ontbreken", "let"))),
         el("tr", {}, el("th", { scope: "row", text: "Bijhouden" }), el("td", {}, m.wp_sync_aan === true ? pil("aan", "goed") : pil("uit"))),

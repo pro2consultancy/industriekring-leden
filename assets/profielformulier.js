@@ -62,10 +62,18 @@
     const sinds = el("input", { id: id("sinds"), type: "number", inputmode: "numeric", min: "1800", max: String(new Date().getFullYear()), step: "1", value: p.bestaat_sinds ?? "", placeholder: "bijv. 1998" });
     const bestand = el("input", { id: id("foto"), type: "file", accept: "image/jpeg,image/png,image/webp" });
     const fotoHint = el("span", { class: "hint" });
+    // Twee toestemmingen die los van elkaar staan: voor het logo (hier) en voor de website (onderaan).
     const toestemming = el("input", { type: "checkbox", id: id("toestemming"), checked: !!p.foto_toestemming });
-    const toestemmingRij = el("label", { class: "vink", for: toestemming.id }, toestemming, el("span", { text: beheer
-      ? "Het bedrijf geeft toestemming om dit logo (of deze foto) op de website van de kring te gebruiken."
-      : "Ik mag dit logo (of deze foto) gebruiken op de website van de kring." }));
+    const toestemmingLabel = el("label", { class: "vink", for: toestemming.id }, toestemming, el("span", {},
+      el("strong", { text: "Toestemming voor het logo: " }), beheer
+        ? "het bedrijf geeft toestemming om dit logo (of deze foto) op de website van de kring te gebruiken."
+        : "ik mag dit logo (of deze foto) gebruiken op de website van de kring."));
+    // Bij het lid: stond het vinkje aan omdat het bestuur het namens het bedrijf zette, dan zeggen we dat erbij.
+    // Zet het lid het uit, of kiest het een ander logo, dan is het niet meer het vinkje van het bestuur.
+    let vinkjeVanBestuur = !beheer && !!p.logo_toestemming_door_bestuur;
+    const bestuurHint = el("span", { class: "hint", text: "Het bestuur heeft dit namens jullie aangevinkt. Klopt het niet, zet het dan uit." });
+    const toestemmingRij = el("div", { style: "display:grid;gap:4px" }, toestemmingLabel, bestuurHint);
+    toestemming.addEventListener("change", () => { vinkjeVanBestuur = false; });
     const pasKnop = (waarde, tekst) => el("button", { type: "button", class: "knop tweede klein", "data-pas": waarde, text: tekst, onclick: () => { s.pas = waarde; teken(); } });
     const pasKeuze = el("div", { class: "fotokeuze" }, pasKnop("passend", "Hele afbeelding tonen"), pasKnop("vullend", "Vak vullen"),
       el("button", { type: "button", class: "knop stil klein", text: "Logo weghalen", onclick: () => { s.foto = null; s.fotoPad = null; bestand.value = ""; teken(); } }),
@@ -89,6 +97,7 @@
         ? "Nog geen logo; de kaart toont de initialen."
         : "Nog geen logo; de kaart toont je initialen. Geen logo bij de hand? Een foto van je bedrijf kan ook.";
       pasKeuze.hidden = !s.foto; toestemmingRij.hidden = !s.foto;
+      bestuurHint.hidden = !(vinkjeVanBestuur && toestemming.checked);
       for (const b of pasKeuze.querySelectorAll("[data-pas]")) b.setAttribute("aria-pressed", String(b.dataset.pas === s.pas));
       voorbeeld.replaceChildren(window.ik.lidkaart({ naam: d.bedrijf.naam, branche: branche.value || "Type bedrijf", kort: kort.value.trim(), foto: s.foto, pas: s.pas }));
       // De bedrijfspagina: alleen ingevulde regels; zo staan ze straks ook op de site.
@@ -107,7 +116,7 @@
       if (beheer) {
         const leeg = ontbreekt({ branche: branche.value, kort: kort.value.trim(), foto_pad: s.fotoPad, foto_toestemming: toestemming.checked });
         nogLeeg.replaceChildren(leeg.length
-          ? melding("let", `Nog leeg: ${leeg.join(", ")}. Je kunt opslaan als concept; het lid ziet wat al is ingevuld. De toestemming voor de website wordt pas vastgelegd als alles is ingevuld.`)
+          ? melding("let", `Nog leeg: ${leeg.join(", ")}. Je kunt opslaan als concept; het lid ziet wat al is ingevuld. De toestemming voor het logo wordt bij een concept meteen opgeslagen; de toestemming voor de website (onderaan) pas als alles is ingevuld.`)
           : melding("goed", "Alle verplichte velden zijn ingevuld. Opslaan geldt als nagekeken door het bestuur."));
       }
     }
@@ -124,6 +133,8 @@
         const v = await verklein(f);
         const r = await opties.foto(v.data);
         s.foto = v.data; s.fotoPad = r.foto_pad; s.pas = v.pas;
+        // Een ander logo: de toestemming die het bestuur gaf, gold voor het vorige. Het lid bevestigt zelf opnieuw.
+        if (vinkjeVanBestuur) { vinkjeVanBestuur = false; toestemming.checked = false; }
         teken();
         fotoHint.textContent = `${f.name} is geladen.`;
       } catch (err) { fotoHint.textContent = err.message; }
@@ -144,7 +155,8 @@
       c ? el("div", { class: "groep" }, el("h3", { text: "Kloppen je gegevens nog?" }),
         el("div", { class: "twee" }, veld("Contactpersoon", cNaam), veld("E-mailadres", cMail)),
         veld("Mobiel nummer", cTel, el("span", { class: "hint", text: "Voor de WhatsApp-berichten van de kring." }))) : null,
-      el("label", { class: "vink", for: opSite.id }, opSite, el("span", { text: beheer ? "Het bedrijf heeft toestemming gegeven om op de website van de kring te staan." : "Ons bedrijf mag op de website van de kring staan." })),
+      el("label", { class: "vink", for: opSite.id }, opSite, el("span", {}, el("strong", { text: "Toestemming voor de website: " }),
+        beheer ? "het bedrijf heeft toestemming gegeven om op de website van de kring te staan." : "ons bedrijf mag op de website van de kring staan.")),
       el("label", { class: "vink", for: metNaam.id }, metNaam, el("span", { text: beheer ? "De naam van de contactpersoon mag erbij." : "Mijn naam mag erbij als contactpersoon." })),
       nogLeeg, el("div", {}, knop), uit);
 
