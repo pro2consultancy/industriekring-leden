@@ -29,7 +29,48 @@ window.ikBerichten = (c) => {
     if (stand.testmodus) delen.push("Testmodus staat aan: mail gaat alleen naar de testadressen en er gaat niets naar Buffer. Bij plaatsen zie je wat er geplaatst zou worden.");
     else if (!stand.buffer_aan) delen.push("\"Berichten plaatsen via Buffer\" staat uit: voor LinkedIn en Facebook zie je bij plaatsen alleen wat er geplaatst zou worden. Mail aan leden gaat wel echt.");
     if (!stand.buffer_gekoppeld) delen.push("Buffer is nog niet gekoppeld (de sleutel ontbreekt). LinkedIn- en Facebook-teksten kun je al klaarzetten.");
-    return delen.length ? melding("let", delen.join(" ")) : null;
+    const profiel = profielMelding();
+    if (!delen.length) return profiel;
+    return profiel ? el("div", {}, melding("let", delen.join(" ")), profiel) : melding("let", delen.join(" "));
+  }
+  // Buffer gaf ook een kanaal terug dat geen bedrijfspagina is (bijv. iemands persoonlijke LinkedIn-profiel).
+  // Dat wordt nooit gebruikt, maar hoort niet in Buffer te staan.
+  function nietToegelatenTekst(x) {
+    const dienst = x.service === "linkedin" ? "LinkedIn" : x.service === "facebook" ? "Facebook" : x.service;
+    return x.soort === "profile" ? `het persoonlijke profiel "${x.naam}" (${dienst})` : `"${x.naam}" (${dienst}, geen pagina maar ${x.soort || "onbekend"})`;
+  }
+  function profielMelding() {
+    const lijst = stand?.buffer?.niet_toegelaten ?? [];
+    if (!lijst.length) return null;
+    return melding("fout", `Let op: Buffer gaf ook ${lijst.map(nietToegelatenTekst).join(" en ")} terug. Dat wordt niet gebruikt; alleen bedrijfspagina's. Koppel ${lijst.length === 1 ? "het" : "ze"} in Buffer los en haal daarna de kanalen opnieuw op (Instellingen → Berichten).`);
+  }
+
+  // Mails van een nieuwsbericht die na een afgebroken ronde op 'bezig' bleven staan. Niets automatisch:
+  // het bestuur kiest per bericht opnieuw versturen of overslaan, met twee klikken.
+  function hangendKaart() {
+    const lijst = stand?.hangend ?? [];
+    if (!lijst.length) return null;
+    const uit = el("div", { "aria-live": "polite" });
+    const totaal = lijst.reduce((n, h) => n + h.aantal, 0);
+    const doe = (h, keuze) => async () => {
+      try {
+        const r = await berichtActie({ actie: "hangend_afhandelen", bericht_id: h.bericht_id, keuze, bevestigd: true });
+        bewaar("berichtenlijst", r.ok ? "goed" : "let", `${h.titel}: ${r.verslag}`);
+        lijstScherm();
+      } catch (e) { uit.replaceChildren(melding("fout", e.message)); }
+    };
+    return el("div", { style: "margin-top:12px" },
+      melding("let", `${totaal} mail${totaal === 1 ? "" : "s"} van een nieuwsbericht ${totaal === 1 ? "staat" : "staan"} al langer dan ${stand.hangend_minuten ?? 15} minuten op "bezig". De verzending is daar afgebroken; deze ontvangers krijgen het bericht pas als je kiest. Opnieuw versturen kan een tweede mail geven aan wie hem toch al kreeg; overslaan betekent dat zij dit bericht niet krijgen.`),
+      el("div", { class: "scroll" }, el("table", { class: "tabel" },
+        el("thead", {}, el("tr", {}, ["Bericht", "Op bezig", "Kiezen"].map((t) => el("th", { text: t })))),
+        el("tbody", {}, lijst.map((h) => el("tr", {},
+          el("td", { text: h.titel || "(bericht)" }),
+          el("td", { text: `${h.aantal} sinds ${new Date(h.oudste).toLocaleString("nl-NL")}` }),
+          el("td", {}, el("div", { class: "balk", style: "margin:0" },
+            stand.testmodus ? null : bevestigKnop("Opnieuw versturen", "Zeker? Klik nogmaals om te versturen", doe(h, "opnieuw"), "knop klein"),
+            bevestigKnop("Overslaan", "Zeker? Klik nogmaals om over te slaan", doe(h, "overslaan"), "knop tweede klein")))))))),
+      stand.testmodus ? el("p", { class: "hint", text: "De testmodus staat aan: opnieuw versturen kan pas als die uit staat." }) : null,
+      uit);
   }
 
   // ------------------------------------------------------------------ overzicht
@@ -50,7 +91,9 @@ window.ikBerichten = (c) => {
     inhoud.replaceChildren(kaart(
       el("div", { class: "balk" }, el("h1", { text: "Berichten", style: "margin:0;flex:1" }), el("button", { class: "knop", type: "button", onclick: () => (location.hash = "bericht/nieuw"), text: "Nieuw bericht" })),
       el("p", { text: "Eén bericht, per kanaal de juiste tekst en het juiste beeld: mail aan leden, LinkedIn, Facebook en WhatsApp. Een bericht bij een bijeenkomst maak je ook vanuit die bijeenkomst." }),
+      neem("berichtenlijst"),
       standMelding(),
+      hangendKaart(),
       el("div", { class: "scroll", style: "margin-top:12px" }, el("table", { class: "tabel" },
         el("thead", {}, el("tr", {}, ["Bericht", "Kanalen", "Gemaakt"].map((h) => el("th", { text: h })))),
         el("tbody", {}, (berichten ?? []).length ? berichten.map(rij) : el("tr", {}, el("td", { colspan: 3, text: "Nog geen berichten." })))))));
@@ -391,7 +434,9 @@ window.ikBerichten = (c) => {
     ophalen.addEventListener("click", bezig(ophalen, async () => {
       try {
         const r = await berichtActie({ actie: "kanalen_ophalen" });
-        bewaar("berichten", "goed", r.buffer.kanalen.length ? `Gevonden: ${r.buffer.kanalen.map((x) => `${x.naam} (${x.service})`).join(", ")}.` : "Buffer heeft geen LinkedIn- of Facebook-kanaal gekoppeld.");
+        const geweigerd = r.buffer.niet_toegelaten ?? [];
+        bewaar("berichten", geweigerd.length ? "fout" : "goed", (r.buffer.kanalen.length ? `Gevonden: ${r.buffer.kanalen.map((x) => `${x.naam} (${x.service})`).join(", ")}.` : "Buffer heeft geen LinkedIn- of Facebook-pagina gekoppeld.")
+          + (geweigerd.length ? ` Niet gebruikt: ${geweigerd.map(nietToegelatenTekst).join(" en ")}. Koppel ${geweigerd.length === 1 ? "het" : "ze"} in Buffer los.` : ""));
         c.herteken();
       } catch (e) { toon("fout", e.message); }
     }));
@@ -419,6 +464,7 @@ window.ikBerichten = (c) => {
         el("tr", {}, el("th", { scope: "row", text: "Kanalen" }), el("td", { text: stand?.buffer ? (kanalenLijst.length ? kanalenLijst.map((x) => `${x.naam} (${x.service})`).join(", ") : "geen LinkedIn of Facebook") + ` · opgehaald ${new Date(stand.buffer.opgehaald_op).toLocaleString("nl-NL")}` : "nog niet opgehaald" })),
         el("tr", {}, el("th", { scope: "row", text: "Verzoeken" }), el("td", { text: g ? `${g.dertig} in 30 dagen (wij stoppen bij ${g.grenzen.dertigDagen}; Buffer bij 3.000), ${g.dag} vandaag` : "onbekend" })),
         el("tr", {}, el("th", { scope: "row", text: "Ingepland per kanaal" }), el("td", { text: `hooguit ${stand?.max_ingepland ?? 8} tegelijk (Buffer gratis: 10)` })))),
+      profielMelding(),
       concept ? el("div", {}, melding("let", `Er staat een proefconcept in Buffer bij ${concept.kanaal} (sinds ${new Date(concept.aangemaakt_op).toLocaleString("nl-NL")}). Kijk het na bij Concepten in Buffer en haal het daarna weg; na twee uur gaat het vanzelf weg.`),
         el("div", { class: "balk" }, proefWeg)) : null,
       el("div", { class: "balk" }, ophalen, kanalenLijst.length && !concept ? [proefKanaal, proefBericht, proef] : null),
